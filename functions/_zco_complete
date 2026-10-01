@@ -1,0 +1,90 @@
+# _zco_complete: completion for the per-model commands, zco and _zco_main.
+#
+# Registered for zco, for _zco_main (what completion sees for an alias when COMPLETE_ALIASES is
+# off: `noglob _zco_main NAME MODEL ...`) and for each command name (when it is on). The words
+# before the cursor are classified with the parser's own rules, so it offers:
+#   - the first argument of zco: the configured model names;
+#   - after an option that takes a value: that value (effort levels, permission modes, files,
+#     directories for --add-dir, nothing for free text);
+#   - a word starting with -: the options, with descriptions;
+#   - before the prompt and while no effort is set: the effort words, and files;
+#   - once the prompt has started: files.
+
+emulate -L zsh
+setopt extended_glob
+
+local -A zk
+_zco_keys
+local cmd=${words[1]} w uw expect= opt
+local -a opts levels modes expl
+integer first=2 i effort_set=0 started=0
+levels=( ${(s: :)zk[levels]} )
+modes=( ${(s: :)zk[modes]} )
+
+case $cmd in
+  (zco)
+    if (( CURRENT == 2 )); then
+      _wanted models expl 'model' compadd -a _zco_models
+      return
+    fi
+    first=3 ;;
+  (_zco_main)
+    (( CURRENT > 3 )) || return 1
+    first=4 ;;
+esac
+
+for (( i = first; i < CURRENT; i++ )); do
+  w=${words[i]}
+  if [[ -n $expect ]]; then
+    expect=
+    continue
+  fi
+  uw=${(Q)w}
+  _zco_classify "$uw" $effort_set
+  case $REPLY in
+    (end) started=1; break ;;
+    (effort) effort_set=1 ;;
+    (value-opt)
+      expect=${zk[long:$uw]:-$uw}
+      [[ $expect == --effort ]] && effort_set=1 ;;
+    (value-eq) [[ $uw == --effort=* ]] && effort_set=1 ;;
+    (flag|unknown) ;;
+    (*) started=1; break ;;
+  esac
+done
+
+# The value of an option: after `--opt ` or inside `--opt=`.
+if [[ -z $expect && $started == 0 && $PREFIX == --?*=* && -n ${zk[arg:${PREFIX%%=*}]:-} ]]; then
+  expect=${PREFIX%%=*}
+  compset -P '*='
+fi
+if [[ -n $expect ]]; then
+  case ${zk[comp:$expect]} in
+    (level) _wanted levels expl 'effort level' compadd -a levels ;;
+    (mode) _wanted modes expl 'permission mode' compadd -a modes ;;
+    (file) _files ;;
+    (dir) _files -/ ;;
+    (*) _message -e values "${zk[arg:$expect]:l}"; return 1 ;;
+  esac
+  return
+fi
+
+if (( started )); then
+  _files
+  return
+fi
+
+if [[ $PREFIX == -* ]]; then
+  for opt in ${(s: :)zk[opts]}; do
+    opts+=( "${opt}:${zk[odesc:$opt]}" )
+    [[ -n ${zk[short:$opt]:-} ]] && opts+=( "${zk[short:$opt]}:${zk[odesc:$opt]}" )
+  done
+  _describe -t options 'option' opts
+  return
+fi
+
+if (( effort_set )); then
+  _files
+else
+  _alternative 'efforts:effort word:compadd -a levels' 'files:file:_files'
+fi

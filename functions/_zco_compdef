@@ -1,0 +1,15 @@
+# _zco_compdef: register _zco_complete for zco, _zco_main and every per-model command.
+#
+# Called when the plugin loads; when the completion system is not initialised yet (no compdef),
+# it runs again as a precmd hook until it is, then removes itself.
+
+emulate -L zsh
+
+if (( ! ${+functions[compdef]} )); then
+  autoload -Uz add-zsh-hook
+  add-zsh-hook precmd _zco_compdef
+  return 0
+fi
+compdef _zco_complete zco _zco_main ${(k)_zco_cmds}
+add-zsh-hook -d precmd _zco_compdef 2>/dev/null
+return 0

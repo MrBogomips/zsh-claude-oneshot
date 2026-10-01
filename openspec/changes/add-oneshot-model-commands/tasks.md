@@ -211,9 +211,9 @@
 
 ## 9. Tab completion
 
-- [ ] 9.1 Write completion tests through `zpty` for every shell-completion scenario: short and long options (including `--shell` and `--literal`), effort words, `-e` levels, permission modes, `--add-dir` directories, files inside the prompt, models for `zco`, `compinit` run after loading, and `COMPLETE_ALIASES` on. Verify that they fail.
-- [ ] 9.2 Implement `_zco_complete`, driven by `_zco_classify` and `_zco_keys`, and register it for `zco`, `_zco_main` and each command name, deferring registration to `precmd` when `compdef` is missing. Verify that the completion tests pass.
-- [ ] 9.3 Mention completion in the README usage section. Verify that the completions listed there match the tests.
+- [x] 9.1 Write completion tests through `zpty` for every shell-completion scenario: short and long options (including `--shell` and `--literal`), effort words, `-e` levels, permission modes, `--add-dir` directories, files inside the prompt, models for `zco`, `compinit` run after loading, and `COMPLETE_ALIASES` on. Verify that they fail.
+- [x] 9.2 Implement `_zco_complete`, driven by `_zco_classify` and `_zco_keys`, and register it for `zco`, `_zco_main` and each command name, deferring registration to `precmd` when `compdef` is missing. Verify that the completion tests pass.
+- [x] 9.3 Mention completion in the README usage section. Verify that the completions listed there match the tests.
 
 ## 10. CI and integration checks
 

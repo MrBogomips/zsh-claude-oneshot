@@ -692,7 +692,24 @@ zsh-syntax-highlighting, which usually comes last, is a good default.
 
 ## Completion
 
-Tab completion covers options, effort words and option values.
+Tab completes the per-model commands and `zco` with zsh's completion system:
+
+<!-- completion-examples:start -->
+```text
+opus -<Tab>                     options, short and long, with descriptions
+opus --sh<Tab>                  --shell  --show-config
+opus x<Tab>                     xhigh (effort words, while no effort is set; never ultracode)
+sonnet -e <Tab>                 low  medium  high  xhigh  max
+opus --permission-mode a<Tab>   acceptEdits  auto
+opus --add-dir li<Tab>          directories only
+sonnet edit REA<Tab>            files, once the prompt has started
+zco so<Tab>                     sonnet (the configured models)
+```
+<!-- completion-examples:end -->
+
+File-valued options (`--system-prompt-file`, `--append-system-prompt-file`, `--settings`,
+`--mcp-config`) complete file names; free-text values such as `--agent` offer nothing. It works
+whether `compinit` runs before or after the plugin loads, and with `COMPLETE_ALIASES` on or off.
 
 ## Security
 

@@ -59,6 +59,7 @@
       add-zle-hook-widget -d line-finish _zco_line_finish
       add-zsh-hook -d preexec _zco_preexec
     fi
+    _zco_compdef
   fi
   return 0
 } "$0"

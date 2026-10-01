@@ -199,3 +199,16 @@ test_each_rewrite_example_matches_the_rewrite_and_has_a_test() {
     assert_contains "$tests" "$typed" "README example without a rewrite test: $typed"
   done
 }
+
+test_each_completion_example_has_a_completion_test() {
+  zt_readme_section $ZT_README completion-examples
+  local -a lines
+  lines=( "${(@f)REPLY}" )
+  lines=( "${(@)lines:#\`\`\`*}" )
+  assert_eq $#lines 8
+  local tests=$(<$ZT_TESTS/completion/complete.test.zsh) line typed
+  for line in $lines; do
+    typed=${line%%<Tab>*}
+    assert_contains "$tests" "zt_complete '$typed'" "README completion example without a test: $typed"
+  done
+}
