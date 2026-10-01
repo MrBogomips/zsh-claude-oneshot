@@ -277,6 +277,23 @@ assert_setting() {   # key value [source]
 
 zt_mkdir_cd() { mkdir -p -- $1 && cd -- $1 }
 
+# Set PATH to the test double plus links to the few tools it needs, so that jq is not found.
+zt_path_without_jq() {
+  local dir=$ZT_TMP/nojq-bin tool
+  mkdir -p -- $dir
+  for tool in zsh env mkdir cp cat; do
+    ln -sf -- "$(whence -p $tool)" $dir/$tool
+  done
+  path=( $ZT_TESTS/bin $dir )
+  export PATH
+}
+
+# A copy of a stream fixture with the fixtures' /work/proj replaced by the current directory.
+zt_stream_here() {   # fixture-name: path of the copy, in REPLY
+  REPLY=$ZT_TMP/${1}
+  sed "s|/work/proj|$PWD|g" $ZT_TESTS/fixtures/$1 > $REPLY
+}
+
 # ---------------------------------------------------------------- per-test environment
 
 zt_begin_test() {

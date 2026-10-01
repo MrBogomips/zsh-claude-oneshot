@@ -1,0 +1,53 @@
+# _zco_render: the jq filter that turns Claude Code's stream-json into tagged lines, in REPLY.
+#
+# Run as: jq -R -r --unbuffered --arg pwd "$PWD" --arg rpwd "${PWD:A}" "$REPLY"
+# Each raw input line is tried as JSON, so a line that is not JSON never stops the stream.
+# Output lines, one per event (see _zco_route for where each goes):
+#   P<tool>\t<summary>   a tool call; the summary is the call's most relevant input, on one line
+#   T<line>              a line of an intermediate text message
+#   E<subtype>           an error result
+#   R<line>              a line of the final answer
+#   S<ms>\t<turns>\t<usd>  the closing statistics
+#   X<raw>               a line that is not a JSON object
+# Only jq 1.6 builtins are used, and every field access tolerates a missing field.
+
+emulate -L zsh
+
+REPLY='
+def one: tostring | gsub("[ \t]*[\r\n]+[ \t]*"; " ") | gsub("\t"; " ") | sub("^ +"; "") | sub(" +$"; "");
+def rel:
+  if $pwd != "" and startswith($pwd + "/") then .[($pwd | length) + 1:]
+  elif $rpwd != "" and startswith($rpwd + "/") then .[($rpwd | length) + 1:]
+  else . end;
+def summary:
+  (.name // "") as $n | (.input // {}) as $i |
+  ( if $n == "Bash" then $i.command?
+    elif $n == "Read" or $n == "Edit" or $n == "Write" or $n == "NotebookEdit" or $n == "MultiEdit"
+      then (($i.file_path? // $i.notebook_path? // "") | tostring | rel)
+    elif $n == "Grep" or $n == "Glob" then $i.pattern?
+    elif $n == "WebFetch" then $i.url?
+    elif $n == "WebSearch" then $i.query?
+    elif $n == "Task" or $n == "Agent" then $i.description?
+    elif $n == "Skill" then ($i.skill? // $i.command?)
+    else "" end ) // "" | one;
+. as $raw
+| if $raw == "" then empty else
+  (try fromjson catch null) as $e
+  | if ($e | type) != "object" then "X" + $raw
+    elif $e.type == "assistant" then
+      ( ($e.message.content? // []) | if type == "array" then .[] else empty end
+        | if type != "object" then empty
+          elif .type == "tool_use" then "P" + ((.name // "?") | one) + "\t" + summary
+          elif .type == "text" then ((.text // "") | tostring | split("\n")[] | "T" + .)
+          else empty end )
+    elif $e.type == "result" then
+      ( if ($e.is_error? == true) or (($e.subtype? // "success") != "success")
+        then "E" + (($e.subtype? // "error") | one) else empty end ),
+      ( if ($e.result? | type) == "string"
+        then ($e.result | if . == "" then "R" else (split("\n")[] | "R" + .) end)
+        else empty end ),
+      ( "S" + (($e.duration_ms? // "") | tostring) + "\t" + (($e.num_turns? // "") | tostring)
+        + "\t" + (($e.total_cost_usd? // "") | tostring) )
+    else empty end
+  end
+'

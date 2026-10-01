@@ -3,6 +3,7 @@
 #   zt_pty_start [zshrc-line...]   start the shell; the lines are appended to its .zshrc
 #   zt_pty_run LINE [TIMEOUT]      type LINE, press Enter, wait for the next prompt;
 #                                  the output in between is in $ZT_PTY_OUT (cleaned)
+#                                  and $ZT_PTY_RAW (with escape sequences)
 #   zt_pty_send TEXT               send raw keys without Enter
 #   zt_pty_wait [TIMEOUT]          wait for the next prompt; output in $ZT_PTY_OUT
 #   zt_pty_stop                    end the shell
@@ -13,7 +14,7 @@
 zmodload zsh/zpty zsh/zselect zsh/datetime
 
 typeset -g ZT_PTY_MARK='<ZT-PROMPT>'
-typeset -g ZT_PTY_BUF= ZT_PTY_OUT=
+typeset -g ZT_PTY_BUF= ZT_PTY_OUT= ZT_PTY_RAW=
 
 zt_pty_start() {
   local zdot=$ZT_TMP/zdotdir
@@ -51,7 +52,8 @@ zt_pty_wait() {   # [timeout seconds]
     (( EPOCHREALTIME > deadline )) && { zt_pty_clean "$ZT_PTY_BUF"; ZT_PTY_OUT=$REPLY; return 1 }
     zselect -t 2
   done
-  zt_pty_clean "${ZT_PTY_BUF%%"$ZT_PTY_MARK"*}"
+  ZT_PTY_RAW=${ZT_PTY_BUF%%"$ZT_PTY_MARK"*}
+  zt_pty_clean "$ZT_PTY_RAW"
   ZT_PTY_OUT=$REPLY
   ZT_PTY_BUF=${ZT_PTY_BUF#*"$ZT_PTY_MARK"}
   return 0

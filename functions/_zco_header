@@ -1,0 +1,32 @@
+# _zco_header MODEL EFFORT COLOR UTF8: print the one-line header on stderr.
+#
+#   model · effort · permission mode · directory [· continue | · resume] [· agent NAME]
+#   [· /SKILL] [· mcp] [· local config]
+# EFFORT is the header field from _zco_effort (a level, settings or n/a). Uses S, P and
+# zco_files from _zco_main. COLOR and UTF8 come from _zco_style.
+
+emulate -L zsh
+
+local model=$1 effort=$2 sep=' · ' line field
+(( ${4:-1} )) || sep=' - '
+local -a fields
+fields=( $model $effort ${S[permission_mode]:-auto} ${(D)PWD} )
+if [[ -n ${P[continue]:-} ]]; then
+  fields+=( continue )
+elif [[ -n ${P[resume]:-} ]]; then
+  fields+=( resume )
+fi
+[[ -n ${S[agent]:-} ]] && fields+=( "agent ${S[agent]}" )
+[[ -n ${P[skill]:-} ]] && fields+=( "/${P[skill]#/}" )
+[[ ${S[mcp]:-} == true || -n ${S[mcp_config]:-} ]] && fields+=( mcp )
+[[ -n ${zco_files[2]:-} ]] && fields+=( 'local config' )
+
+line=$fields[1]
+for field in "${(@)fields[2,-1]}"; do
+  line+=$sep$field
+done
+if (( ${3:-0} )); then
+  print -ru2 -- $'\e[2m'"$line"$'\e[0m'
+else
+  print -ru2 -- "$line"
+fi

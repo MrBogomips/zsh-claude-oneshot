@@ -144,7 +144,7 @@
 
 ## 7. Output and live progress
 
-- [ ] 7.1 Write synthetic stream-json fixtures in `tests/fixtures/`:
+- [x] 7.1 Write synthetic stream-json fixtures in `tests/fixtures/`:
   - a tool call for each tool summarised in design Decision 10;
   - text blocks;
   - a success result and a multi-line result;
@@ -152,17 +152,17 @@
   - one deliberate non-JSON line.
 
   Verify that every fixture line except the deliberate one passes `jq -e .`.
-- [ ] 7.2 Write tests for every run-output scenario, with the terminal cases driven through `zpty`. Verify that they fail.
-- [ ] 7.3 Implement the header:
+- [x] 7.2 Write tests for every run-output scenario, with the terminal cases driven through `zpty`. Verify that they fail.
+- [x] 7.3 Implement the header:
   - fields, with `settings` / `n/a` for the effort, and the `~` directory form;
   - the markers `continue`/`resume`, `agent <name>`, `/<skill>`, `mcp` and `local config`;
   - dim styling, `NO_COLOR`, and the ASCII fallback outside UTF-8 locales;
   - no header for `-q`, `-h` and `--show-config`.
 
   Verify that the header and styling scenarios pass, including "Agent, skill and project file".
-- [ ] 7.4 Implement `_zco_render` and `_zco_route`: the jq filter from design Decision 10, tag routing, truncation to `$COLUMNS`, the `-v` extras, and the exit status from `pipestatus[1]`. Verify that these scenarios pass: progress, verbose, error result, non-JSON line, and "Same answer in both modes".
-- [ ] 7.5 Implement the choice of output mode (stderr a terminal, `-v`, `-q`, jq present) and the missing-jq notice. Verify that the quiet, "stderr not a terminal" and missing-jq scenarios pass with jq hidden from `PATH`.
-- [ ] 7.6 Document output in the README: stdout versus stderr, the header fields and markers, progress, `-v`/`-q`, jq being optional, and `NO_COLOR`. Verify that the header examples in the README match the test expectations.
+- [x] 7.4 Implement `_zco_render` and `_zco_route`: the jq filter from design Decision 10, tag routing, truncation to `$COLUMNS`, the `-v` extras, and the exit status from `pipestatus[1]`. Verify that these scenarios pass: progress, verbose, error result, non-JSON line, and "Same answer in both modes".
+- [x] 7.5 Implement the choice of output mode (stderr a terminal, `-v`, `-q`, jq present) and the missing-jq notice. Verify that the quiet, "stderr not a terminal" and missing-jq scenarios pass with jq hidden from `PATH`.
+- [x] 7.6 Document output in the README: stdout versus stderr, the header fields and markers, progress, `-v`/`-q`, jq being optional, and `NO_COLOR`. Verify that the header examples in the README match the test expectations.
 
 ## 8. Raw-line capture
 

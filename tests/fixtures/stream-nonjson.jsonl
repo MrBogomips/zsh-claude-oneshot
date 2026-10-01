@@ -1,0 +1,5 @@
+{"type":"system","subtype":"init","cwd":"/work/proj","session_id":"s-4","model":"claude-test","tools":["Bash"]}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"ls"}}]},"session_id":"s-4"}
+Warning: deliberately not JSON, as a plain-text line in the stream
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"t2","name":"Glob","input":{"pattern":"*.zsh"}}]},"session_id":"s-4"}
+{"type":"result","subtype":"success","is_error":false,"duration_ms":700,"num_turns":2,"result":"Two files.","session_id":"s-4","total_cost_usd":0.002}

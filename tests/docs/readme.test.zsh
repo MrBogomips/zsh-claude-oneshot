@@ -161,3 +161,21 @@ test_manual_install_snippet_works_in_zsh_f() {
   assert_eq "$ZT_OUT" 'fake answer'
   assert_argv_has --model haiku --permission-mode plan
 }
+
+test_readme_header_examples_match_the_header_tests() {
+  zt_readme_section $ZT_README header-examples
+  local -a examples
+  examples=( "${(@f)REPLY}" )
+  examples=( "${(@)examples:#\`\`\`*}" )
+  assert_eq $#examples 4
+  local tests ex
+  tests=$(<$ZT_TESTS/output/header.test.zsh)
+  for ex in $examples; do
+    assert_contains "$tests" "assert_eq \"\$REPLY\" '$ex'" "README header example without a test: $ex"
+  done
+}
+
+test_readme_intro_header_and_progress_lines_match_the_formats() {
+  local readme=$(<$ZT_README)
+  assert_contains "$readme" $'opus · xhigh · auto · ~/proj\n→ Bash  git status --short\n→ Bash  git diff --stat'
+}

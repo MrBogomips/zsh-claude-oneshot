@@ -526,7 +526,71 @@ cannot be found.
 
 ## Output
 
-The final answer goes to stdout; the header, progress and notices go to stderr.
+Stdout carries only Claude Code's final answer, followed by a newline, so it can be piped,
+redirected or captured. Everything else goes to stderr: the header, progress, notices and
+errors. Claude Code's own stderr passes through unchanged.
+
+### The header
+
+Before Claude Code starts, one line on stderr shows the model, the effort, the permission mode
+and the directory, then markers when they apply:
+
+<!-- header-examples:start -->
+```text
+opus · xhigh · auto · ~/proj
+sonnet · settings · auto · ~/proj
+haiku · n/a · plan · ~/proj · continue
+sonnet · settings · auto · ~/proj · agent reviewer · /review · local config
+```
+<!-- header-examples:end -->
+
+- The effort is the level passed to Claude Code, `settings` when none is passed (Claude Code's
+  own settings decide), or `n/a` for haiku models.
+- The directory uses `~` for your home and for named directories.
+- The markers, in this order: `continue` (`-c`) or `resume` (`-r`), `agent NAME`, `/SKILL`
+  (`-s`), `mcp` (MCP servers may load) and `local config` (a project `.zco.config` applies).
+
+A misread effort word or a project file you did not expect is visible before anything runs.
+There is no header with `-q`, for `-h` and `--show-config`, or on a usage error.
+
+### Live progress
+
+When stderr is a terminal, each tool call shows as one line while Claude Code works:
+
+```text
+→ Bash  git diff --stat
+→ Read  src/parser.zsh
+→ Edit  src/parser.zsh
+→ Task  Review the parser
+```
+
+The summary is the call's most relevant input: the command for `Bash`, the path (relative to
+the current directory when inside it) for `Read`, `Edit`, `Write` and `NotebookEdit`, the
+pattern for `Grep` and `Glob`, the URL or query for `WebFetch` and `WebSearch`, the description
+for subagents and the name for `Skill`. Other tools, such as MCP tools, show only their name. A
+summary is reduced to one line and cut to the terminal width.
+
+Progress needs [jq](https://jqlang.org/). Without it, Claude Code runs with its plain text
+output and you get the answer without progress; `-v` then prints one notice saying so. When
+stderr is not a terminal (`2> log.txt`), there is no progress either, unless you ask with `-v`.
+
+### `-v` and `-q`
+
+- `-v` renders progress even when stderr is not a terminal, adds Claude Code's intermediate
+  messages, does not cut summaries, and ends with a line showing duration, turns and cost, for
+  example `done · 12.3 s · 4 turns · $0.0123`.
+- `-q` prints no header, no progress and no notices. Errors still go to stderr, and the answer
+  still goes to stdout.
+
+When both are given, the last one wins. An error that Claude Code reports while progress is
+shown, such as `error_max_budget_usd` when the budget runs out, appears as one line naming it.
+A line from Claude Code that is not JSON is passed to stderr as it is.
+
+### Colour and characters
+
+The header and progress lines are dim when stderr is a terminal. Set `NO_COLOR` (to any
+non-empty value) to turn that off; nothing else is coloured. Outside a UTF-8 locale, ` - `, `->`
+and `...` replace ` · `, `→` and `…`.
 
 ## Typing prompts without quotes
 

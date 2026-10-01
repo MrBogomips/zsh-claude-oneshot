@@ -1,0 +1,3 @@
+{"type":"system","subtype":"init","cwd":"/work/proj","session_id":"s-3","model":"claude-test","tools":["Bash"]}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"make test"}}]},"session_id":"s-3"}
+{"type":"result","subtype":"error_max_budget_usd","is_error":true,"duration_ms":900,"num_turns":1,"session_id":"s-3","total_cost_usd":0.26}

@@ -1,0 +1,5 @@
+{"type":"system","subtype":"init","cwd":"/work/proj","session_id":"s-2","model":"claude-test","tools":[]}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"First I will read the file.\nThen I will summarize it."}]},"session_id":"s-2"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"t1","name":"Read","input":{"file_path":"/work/proj/notes.md"}}]},"session_id":"s-2"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Here is the summary."}]},"session_id":"s-2"}
+{"type":"result","subtype":"success","is_error":false,"duration_ms":2500,"num_turns":2,"result":"Line one\nLine two \"quoted\"\n\n\tIndented last line","session_id":"s-2","total_cost_usd":0.5}

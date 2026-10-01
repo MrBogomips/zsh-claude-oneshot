@@ -16,8 +16,8 @@ fi
 
 local -A zk P S Ssrc Slayer
 local -a zco_files cmd args
-local effort notice skill key
-integer input=0 quiet=0 verbose=0 progress=0 rc=0
+local effort effort_shown notice skill key filter
+integer input=0 quiet=0 verbose=0 progress=0 rc=0 color=0 utf8=1
 
 _zco_keys
 _zco_parse "$@" || { _zco_err $name "$REPLY"; return }
@@ -50,12 +50,17 @@ for key in system_prompt_file append_system_prompt_file; do
 done
 
 _zco_effort $model
-effort=$REPLY notice=$reply[2]
+effort=$REPLY effort_shown=$reply[1] notice=$reply[2]
 
+# Output mode: live progress when stderr is a terminal or with -v, never with -q, and only with jq.
 [[ ${P[output]:-} == quiet ]] && quiet=1
 [[ ${P[output]:-} == verbose ]] && verbose=1
-if (( ! quiet )) && { (( verbose )) || [[ -t 2 ]] } && whence -p jq >/dev/null; then
-  progress=1
+if (( ! quiet )) && { (( verbose )) || [[ -t 2 ]] }; then
+  if whence -p jq >/dev/null; then
+    progress=1
+  elif (( verbose )); then
+    notice+=${notice:+$'\n'}"$name: live progress needs jq, which was not found; only the final answer is shown"
+  fi
 fi
 
 _zco_argv $model "$effort" $progress || { _zco_err $name "$REPLY"; return }
@@ -68,8 +73,29 @@ if (( rc )); then
 fi
 cmd=( "${reply[@]}" )
 
+_zco_style
+color=$reply[1] utf8=$reply[2]
 if (( ! quiet )); then
+  _zco_header $model $effort_shown $color $utf8
   [[ -n $notice ]] && print -ru2 -- "$notice"
+fi
+
+if (( progress )); then
+  _zco_render
+  filter=$REPLY
+  # pipestatus must be read right after the pipeline, inside the branch.
+  if (( input )); then
+    "${cmd[@]}" "${args[@]}" |
+      jq -R -r --unbuffered --arg pwd "$PWD" --arg rpwd "${PWD:A}" "$filter" |
+      _zco_route $name $verbose $color $utf8
+    rc=${pipestatus[1]}
+  else
+    "${cmd[@]}" "${args[@]}" </dev/null |
+      jq -R -r --unbuffered --arg pwd "$PWD" --arg rpwd "${PWD:A}" "$filter" |
+      _zco_route $name $verbose $color $utf8
+    rc=${pipestatus[1]}
+  fi
+  return rc
 fi
 
 if (( input )); then

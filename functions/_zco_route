@@ -1,0 +1,51 @@
+# _zco_route NAME VERBOSE COLOR UTF8: dispatch the tagged lines from the _zco_render filter.
+#
+# Reads stdin; runs in the current shell as the last element of the progress pipeline.
+#   P  stderr: "→ Tool  summary", truncated to $COLUMNS unless VERBOSE
+#   T  stderr, only with VERBOSE
+#   R  stdout: the final answer, line by line
+#   E  stderr: one line naming the error Claude Code reported
+#   S  stderr, only with VERBOSE: duration, turns and cost
+#   X  stderr, unchanged
+# COLOR dims the progress lines; UTF8 0 uses ASCII for the arrow, separators and ellipsis.
+
+emulate -L zsh
+
+local name=$1 line tag rest tool summary text ms turns usd on= off=
+integer verbose=${2:-0} width
+local arrow='→' sep=' · ' ell='…'
+(( ${4:-1} )) || { arrow='->' sep=' - ' ell='...' }
+(( ${3:-0} )) && { on=$'\e[2m' off=$'\e[0m' }
+
+while IFS= read -r line; do
+  tag=${line[1]} rest=${line[2,-1]}
+  case $tag in
+    (P)
+      tool=${rest%%$'\t'*} summary=${rest#*$'\t'}
+      [[ $rest == *$'\t'* ]] || summary=
+      text="$arrow $tool${summary:+  $summary}"
+      width=${COLUMNS:-0}
+      if (( ! verbose && width > 0 && ${#text} > width )); then
+        text=${text[1,width-${#ell}]}$ell
+      fi
+      print -ru2 -- "$on$text$off" ;;
+    (T)
+      (( verbose )) && print -ru2 -- "$on$rest$off" ;;
+    (R)
+      print -r -- "$rest" ;;
+    (E)
+      print -ru2 -- "$name: Claude Code stopped with $rest" ;;
+    (S)
+      (( verbose )) || continue
+      ms=${rest%%$'\t'*} rest=${rest#*$'\t'}
+      turns=${rest%%$'\t'*} usd=${rest#*$'\t'}
+      text=done
+      [[ $ms == <-> ]] && text+="$sep$(( ms / 1000 )).$(( ms % 1000 / 100 )) s"
+      [[ $turns == <-> ]] && text+="$sep$turns turn${${turns:#1}:+s}"
+      [[ -n $usd ]] && text+="$sep\$$usd"
+      print -ru2 -- "$on$text$off" ;;
+    (X)
+      print -ru2 -- "$rest" ;;
+  esac
+done
+return 0

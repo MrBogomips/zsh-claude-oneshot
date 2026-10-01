@@ -1,0 +1,11 @@
+# _zco_style: how to write to stderr, in reply=( COLOR UTF8 ).
+#   COLOR  1 when stderr is a terminal and NO_COLOR is unset or empty: header and progress are dim
+#   UTF8   1 in a UTF-8 locale; otherwise " - ", "->" and "..." replace " · ", "→" and "…"
+
+emulate -L zsh
+setopt extended_glob
+
+integer color=0 utf8=0
+[[ -t 2 && -z ${NO_COLOR:-} ]] && color=1
+[[ ${LC_ALL:-${LC_CTYPE:-${LANG:-}}} == (#i)*utf(-|)8* ]] && utf8=1
+reply=( $color $utf8 )
