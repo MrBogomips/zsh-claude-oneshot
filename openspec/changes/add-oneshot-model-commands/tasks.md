@@ -229,4 +229,4 @@
 
   Verify that it is skipped by default. Run it once with the user's approval and record the results in design.md.
 - [x] 10.3 Run the full local gate: `zsh tests/run.zsh --lint && zsh tests/run.zsh && zsh tests/scenario-coverage.zsh && zsh tests/check-hygiene.zsh`. Verify that every spec scenario is covered and all checks pass.
-- [ ] 10.4 After the user explicitly approves, create the public repository (`gh repo create MrBogomips/zsh-claude-oneshot --public`) and push. Verify that CI passes on Ubuntu, macOS and the minimum-zsh job.
+- [x] 10.4 After the user explicitly approves, create the public repository (`gh repo create MrBogomips/zsh-claude-oneshot --public`) and push. Verify that CI passes on Ubuntu, macOS and the minimum-zsh job.
