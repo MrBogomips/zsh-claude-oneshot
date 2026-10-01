@@ -139,9 +139,37 @@ zt_collect() {
   ZT_ERR=$(<$ZT_TMP/.stderr)
 }
 
+# ZT_USER_OPTIONS (e.g. "ksh_arrays sh_word_split no_unset err_exit") simulates a user's shell
+# options: they are set around each command run by zt_run*, and the run fails if the command
+# leaves the options changed. The options are set in an inner function that always returns 0,
+# because a non-zero return with err_exit set would end the test shell.
+zt__with_options() {
+  setopt local_options ${=ZT_USER_OPTIONS}
+  # local_options is inherited by called functions and would hide any option they change, so it
+  # is off while the command runs; set again before returning, it restores the caller's options.
+  unsetopt local_options
+  ZT__BEFORE=$(setopt)
+  "$@" || ZT__RC=$?
+  ZT__AFTER=$(setopt)
+  setopt local_options
+}
+
+zt__invoke() {
+  if [[ -z ${ZT_USER_OPTIONS:-} ]]; then
+    "$@"
+    return
+  fi
+  typeset -g ZT__BEFORE= ZT__AFTER=
+  typeset -gi ZT__RC=0
+  zt__with_options "$@"
+  [[ $ZT__BEFORE == "$ZT__AFTER" ]] || zt_fail "the command changed the shell options" \
+    "  before: ${(j:, :)${(f)ZT__BEFORE}}" "  after:  ${(j:, :)${(f)ZT__AFTER}}"
+  return ZT__RC
+}
+
 # Run a command in the current shell with stdin from /dev/null; sets ZT_OUT, ZT_ERR and ZT_RC.
 zt_run() {
-  "$@" </dev/null >$ZT_TMP/.stdout 2>$ZT_TMP/.stderr
+  zt__invoke "$@" </dev/null >$ZT_TMP/.stdout 2>$ZT_TMP/.stderr
   ZT_RC=$?
   zt_collect
   return 0
@@ -150,7 +178,7 @@ zt_run() {
 # Same, with stdin redirected from a file.
 zt_run_stdin() {   # file command...
   local in=$1; shift
-  "$@" <$in >$ZT_TMP/.stdout 2>$ZT_TMP/.stderr
+  zt__invoke "$@" <$in >$ZT_TMP/.stdout 2>$ZT_TMP/.stderr
   ZT_RC=$?
   zt_collect
   return 0
@@ -159,7 +187,7 @@ zt_run_stdin() {   # file command...
 # Same, with data piped into the command (the command still runs in the current shell).
 zt_run_pipe() {   # data command...
   local data=$1; shift
-  print -rn -- "$data" | "$@" >$ZT_TMP/.stdout 2>$ZT_TMP/.stderr
+  print -rn -- "$data" | zt__invoke "$@" >$ZT_TMP/.stdout 2>$ZT_TMP/.stderr
   ZT_RC=$?
   zt_collect
   return 0
@@ -178,6 +206,13 @@ zt_write() {   # path content: writes content plus a final newline, creating dir
 zt_user_config() { zt_write $HOME/.zco.config "$1" }
 
 zt_load() { source $ZT_PLUGIN }
+
+# The per-model command names the plugin defined, sorted and space separated.
+zt_cmd_names() {
+  local -a names
+  names=( ${(k)_zco_cmds} )
+  print -r -- ${(j: :)${(o)names}}
+}
 
 # Autoload the plugin's functions without loading the plugin (for unit tests).
 zt_functions() {
@@ -213,7 +248,7 @@ zt_settings() {   # model arg...
     ZT_RC=2
     return 0
   fi
-  _zco_settings $1
+  zt__invoke _zco_settings $1
   ZT_RC=$?
   return 0
 }

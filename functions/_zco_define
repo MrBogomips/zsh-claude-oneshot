@@ -1,0 +1,73 @@
+# _zco_define PREFIX MODEL...: define zco and one command per model.
+#
+# Each command PREFIX+MODEL is an alias to `noglob _zco_main NAME MODEL`: only an alias can put
+# noglob in front of the arguments, so ? * [ ] reach the prompt unexpanded. A model name must
+# start with a letter or digit and hold only letters, digits, . _ and -; other entries are skipped
+# with a warning (zco still takes them). A name that already exists as an alias, function,
+# builtin, reserved word or external command is skipped with a warning, unless it is this
+# plugin's own definition from an earlier load. Commands from an earlier load that are no longer
+# wanted are removed. Fills the global _zco_cmds (name -> model) and _zco_models (every entry).
+# Warnings go to stderr, one line each; nothing is written when all is well.
+
+emulate -L zsh
+setopt extended_glob
+
+local prefix=$1 model name kind ours
+shift
+local -A old
+(( ${+_zco_cmds} && ${#_zco_cmds} )) && old=( "${(@kv)_zco_cmds}" )
+typeset -gA _zco_cmds
+typeset -ga _zco_models
+_zco_cmds=()
+_zco_models=( "$@" )
+
+# What a name already is, in REPLY (empty when it is free).
+_zco_define_kind() {
+  REPLY=
+  if (( ${+aliases[$1]} )); then REPLY=alias
+  elif (( ${reswords[(Ie)$1]} )); then REPLY='reserved word'
+  elif (( ${+functions[$1]} )); then REPLY=function
+  elif (( ${+builtins[$1]} )); then REPLY=builtin
+  elif whence -p -- $1 >/dev/null; then REPLY=command
+  fi
+}
+
+# zco: a function autoloaded from functions/, unless the name is taken by something else.
+if (( ! ${_zco_owns_zco:-0} )); then
+  _zco_define_kind zco
+  if [[ -n $REPLY ]]; then
+    print -ru2 -- "zsh-claude-oneshot: zco already exists ($REPLY); not defining zco"
+  else
+    autoload -Uz zco
+    typeset -g _zco_owns_zco=1
+  fi
+fi
+
+for model in "$@"; do
+  if [[ $model != [A-Za-z0-9][A-Za-z0-9._-]# ]]; then
+    print -ru2 -- "zsh-claude-oneshot: skipping model '$model': not a valid command name (zco '$model' ... still works)"
+    continue
+  fi
+  name=$prefix$model
+  if [[ $name != [A-Za-z0-9][A-Za-z0-9._-]# ]]; then
+    print -ru2 -- "zsh-claude-oneshot: skipping '$name': prefix '$prefix' does not make a valid command name"
+    continue
+  fi
+  ours="noglob _zco_main $name $model"
+  _zco_define_kind $name
+  if [[ -n $REPLY ]] && ! [[ $REPLY == alias && ${aliases[$name]} == "$ours" ]]; then
+    print -ru2 -- "zsh-claude-oneshot: $name already exists ($REPLY); not defining it. Set ZCO_PREFIX (e.g. ZCO_PREFIX=c-) for prefixed names"
+    continue
+  fi
+  alias -- "$name=$ours"
+  _zco_cmds[$name]=$model
+done
+
+# Remove commands from an earlier load that are no longer wanted (only if still ours).
+for name model in "${(@kv)old}"; do
+  (( ${+_zco_cmds[$name]} )) && continue
+  [[ ${aliases[$name]:-} == "noglob _zco_main $name $model" ]] && unalias -- $name
+done
+
+unfunction _zco_define_kind
+return 0

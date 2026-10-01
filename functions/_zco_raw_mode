@@ -1,0 +1,24 @@
+# _zco_raw_mode [VALUE]: the raw-line mode, literal, shell or off, in REPLY.
+#
+# With VALUE: normalise it (literal/on/1/true/yes, shell, off/0/false/no; any case); returns 1
+# with REPLY=literal when it is none of these.
+# Without VALUE: the default mode for a typed line: ZCO_RAW_LINE (read every time), else the user
+# file's raw_line cached when the plugin loaded, else literal. Invalid values mean literal.
+
+emulate -L zsh
+
+local value
+if (( $# )); then
+  value=$1
+elif (( ${+ZCO_RAW_LINE} )); then
+  value=$ZCO_RAW_LINE
+else
+  value=${_zco_raw_line_file:-literal}
+fi
+case ${(L)value} in
+  (literal|on|1|true|yes) REPLY=literal ;;
+  (shell) REPLY=shell ;;
+  (off|0|false|no) REPLY=off ;;
+  (*) REPLY=literal; return 1 ;;
+esac
+return 0

@@ -127,9 +127,9 @@
 
 ## 6. Plugin loading and per-model commands
 
-- [ ] 6.1 Write tests for every model-commands scenario. Verify that they fail.
-- [ ] 6.2 Complete the entry file: the `is-at-least 5.3` check, quiet loading, idempotent re-sourcing, and the load-time keys `models`, `prefix` and `raw_line` read from the environment or the user file. Verify that these scenarios pass: "Sourced from another directory", "Sourced through a symlink", "Sourced twice", "Old zsh" (via a shadowed `is-at-least`) and "Model list from the user file".
-- [ ] 6.3 Implement `_zco_define`:
+- [x] 6.1 Write tests for every model-commands scenario. Verify that they fail.
+- [x] 6.2 Complete the entry file: the `is-at-least 5.3` check, quiet loading, idempotent re-sourcing, and the load-time keys `models`, `prefix` and `raw_line` read from the environment or the user file. Verify that these scenarios pass: "Sourced from another directory", "Sourced through a symlink", "Sourced twice", "Old zsh" (via a shadowed `is-at-least`) and "Model list from the user file".
+- [x] 6.3 Implement `_zco_define`:
   - the model list as an array or a string, with an empty value as opt-out;
   - the prefix;
   - name validation;
@@ -138,9 +138,9 @@
   - the global table of command names used by the rewrite.
 
   Verify that the command-definition, prefix, opt-out, collision and invalid-entry scenarios pass.
-- [ ] 6.4 Implement `zco`. Verify that the zco scenarios pass, including the redirect-to-file case.
-- [ ] 6.5 Check glob safety and independence from user options. Run the model-commands, claude-invocation and configuration tests again under `setopt KSH_ARRAYS SH_WORD_SPLIT NO_UNSET ERR_EXIT EXTENDED_GLOB NULL_GLOB`. Verify that the recorded argv is identical and that `setopt` output is the same before and after a run. Also check that the "Configuration sources" boolean scenarios pass.
-- [ ] 6.6 Document installation in the README: oh-my-zsh custom plugin, antidote, zinit, zap and manual `source`, plus `models` / `prefix` and the opt-out. Verify that the manual `source` snippet works in a `zsh -f` test, and check the plugin-manager snippets against each manager's documented syntax.
+- [x] 6.4 Implement `zco`. Verify that the zco scenarios pass, including the redirect-to-file case.
+- [x] 6.5 Check glob safety and independence from user options. Run the model-commands, claude-invocation and configuration tests again under `setopt KSH_ARRAYS SH_WORD_SPLIT NO_UNSET ERR_EXIT EXTENDED_GLOB NULL_GLOB`. Verify that the recorded argv is identical and that `setopt` output is the same before and after a run. Also check that the "Configuration sources" boolean scenarios pass.
+- [x] 6.6 Document installation in the README: oh-my-zsh custom plugin, antidote, zinit, zap and manual `source`, plus `models` / `prefix` and the opt-out. Verify that the manual `source` snippet works in a `zsh -f` test, and check the plugin-manager snippets against each manager's documented syntax.
 
 ## 7. Output and live progress
 

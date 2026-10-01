@@ -37,10 +37,60 @@ Committed 3 files: "docs: add install section"
 Requirements: zsh 5.3 or newer and Claude Code (`claude` on your `PATH`). `jq` is optional;
 it is only needed for live progress.
 
+**Manually**, from a clone:
+
+<!-- install-manual:start -->
 ```zsh
 git clone https://github.com/MrBogomips/zsh-claude-oneshot ~/src/zsh-claude-oneshot
 echo 'source ~/src/zsh-claude-oneshot/zsh-claude-oneshot.plugin.zsh' >> ~/.zshrc
 ```
+<!-- install-manual:end -->
+
+**oh-my-zsh**, as a custom plugin:
+
+```zsh
+git clone https://github.com/MrBogomips/zsh-claude-oneshot \
+  ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-claude-oneshot
+```
+
+then add it to the plugins in `~/.zshrc`: `plugins=(git zsh-claude-oneshot)`.
+
+**antidote**: add this line to `~/.zsh_plugins.txt`:
+
+```text
+MrBogomips/zsh-claude-oneshot
+```
+
+**zinit**:
+
+```zsh
+zinit light MrBogomips/zsh-claude-oneshot
+```
+
+**zap**:
+
+```zsh
+plug "MrBogomips/zsh-claude-oneshot"
+```
+
+Open a new shell, then try `haiku -n say hello`.
+
+### Choosing the commands
+
+The commands are `fable`, `opus`, `sonnet` and `haiku`. These settings are read once, when the
+plugin loads, so set them before the plugin line in `~/.zshrc`, or put them in
+`~/.zco.config` (`models = …`, `prefix = …`):
+
+```zsh
+ZCO_MODELS=(opus haiku)     # only these commands (a string works too: "opus haiku")
+ZCO_PREFIX=c-               # c-opus, c-haiku: for names that clash with other commands
+ZCO_MODELS=()               # no per-model commands at all; zco still works
+```
+
+A name that already exists (an alias, function, builtin or command) is never replaced: the
+plugin skips it and prints one warning suggesting `ZCO_PREFIX`. Names that are not valid
+command names, such as `opus[1m]`, get no command, but `zco 'opus[1m]' …` works. Loading prints
+nothing unless something needs your attention, and sourcing the plugin again is harmless.
 
 ## Usage
 

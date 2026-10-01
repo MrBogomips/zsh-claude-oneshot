@@ -95,7 +95,7 @@ ZT_README_CLAUDE_FLAGS=(
 
 # Variables documented before the section that tests them exists. Each entry must go as soon
 # as a test mentions the variable (the test below fails on a stale entry).
-ZT_README_PENDING_VARS=( ZCO_MODELS ZCO_PREFIX ZCO_RAW_LINE )
+ZT_README_PENDING_VARS=()
 
 zt_readme_tokens() {   # pattern: the distinct tokens of README.md matching an ERE, in $reply
   reply=( ${(u)${(f)"$(grep -oE -- "$1" $ZT_README)"}} )
@@ -142,4 +142,22 @@ test_every_readme_variable_is_in_the_help_and_a_test() {
     fi
     assert_true "README variable $v is used in no test" zt_tests_mention "$v"
   done
+}
+
+test_manual_install_snippet_works_in_zsh_f() {
+  zt_readme_section $ZT_README install-manual
+  local -a lines
+  lines=( "${(@f)REPLY}" )
+  lines=( "${(@)lines:#\`\`\`*}" )
+  assert_eq $#lines 2 "clone line and source line"
+  assert_match "$lines[1]" 'git clone https://github.com/MrBogomips/zsh-claude-oneshot ~/src/zsh-claude-oneshot'
+  # Stand in for the clone with the working tree, then run the rest of the snippet as written.
+  mkdir -p ~/src
+  ln -s $ZT_ROOT ~/src/zsh-claude-oneshot
+  zt_run zsh -f -c "${lines[2]}"
+  assert_status 0
+  zt_run zsh -f -c 'source ~/.zshrc && eval "haiku -n say hello"'
+  assert_status 0
+  assert_eq "$ZT_OUT" 'fake answer'
+  assert_argv_has --model haiku --permission-mode plan
 }
