@@ -24,6 +24,11 @@ if [[ -n $zco_files[2] ]]; then _zco_config_read $zco_files[2] project || return
 
 for key in ${(s: :)zk[keys]}; do
   _zco_config_get $key $model || return 1
+  # An empty value means the built-in default (but an empty model list is the opt-out).
+  if [[ -z $cv && $key != models && -n ${zk[default:$key]} ]]; then
+    cv=${zk[default:$key]}
+    cl=default
+  fi
   S[$key]=$cv
   Slayer[$key]=$cl
   if [[ -n ${zk[list:$key]:-} ]]; then

@@ -1,0 +1,79 @@
+# _zco_main NAME MODEL [ARG...]: one run of a per-model command or of zco.
+#
+# NAME is the command as invoked (opus, c-opus or zco) and appears in messages; MODEL is passed to
+# Claude Code unchanged. Steps: parse the arguments, help, configuration, --show-config, checks,
+# effort, Claude Code arguments, command, notices, run. Returns Claude Code's exit status, 2 for a
+# usage or configuration error, 127 when the Claude Code command cannot be found.
+
+emulate -L zsh
+
+local name=${1:-zco} model=${2:-}
+if (( $# >= 2 )); then shift 2; else shift $#; fi
+if [[ -z $model || $model == -* ]]; then
+  _zco_err $name "the first argument must be a model name, e.g. zco opus summarize this repo"
+  return
+fi
+
+local -A zk P S Ssrc Slayer
+local -a zco_files cmd args
+local effort notice skill key
+integer input=0 quiet=0 verbose=0 progress=0 rc=0
+
+_zco_keys
+_zco_parse "$@" || { _zco_err $name "$REPLY"; return }
+if [[ -n ${P[help]:-} ]]; then
+  _zco_usage $name $model
+  return 0
+fi
+_zco_settings $model || { _zco_err $name "$REPLY"; return }
+if [[ -n ${P[show_config]:-} ]]; then
+  _zco_config_show $name $model
+  return 0
+fi
+
+# Something to send: a prompt, a skill, or input piped or redirected into the command.
+[[ -p /dev/stdin || -f /dev/stdin ]] && input=1
+if [[ -z ${P[has_prompt]:-} && -z ${P[skill]:-} ]] && (( ! input )); then
+  _zco_err $name "nothing to send: give a prompt, a skill (-s NAME) or input on stdin"
+  return
+fi
+skill=${P[skill]#/}
+if [[ -n ${P[skill]:-} ]] && [[ $skill != [A-Za-z0-9]* || $skill == *[^A-Za-z0-9:._-]* ]]; then
+  _zco_err $name "invalid skill name '${P[skill]}' (a letter or digit, then letters, digits and : . _ -)"
+  return
+fi
+for key in system_prompt_file append_system_prompt_file; do
+  if [[ -n ${S[$key]} ]] && [[ ! -r ${S[$key]} || -d ${S[$key]} ]]; then
+    _zco_err $name "cannot read ${S[$key]} (${key}, from ${Ssrc[$key]})"
+    return
+  fi
+done
+
+_zco_effort $model
+effort=$REPLY notice=$reply[2]
+
+[[ ${P[output]:-} == quiet ]] && quiet=1
+[[ ${P[output]:-} == verbose ]] && verbose=1
+if (( ! quiet )) && { (( verbose )) || [[ -t 2 ]] } && whence -p jq >/dev/null; then
+  progress=1
+fi
+
+_zco_argv $model "$effort" $progress || { _zco_err $name "$REPLY"; return }
+args=( "${reply[@]}" )
+_zco_cmd
+rc=$?
+if (( rc )); then
+  print -ru2 -- "$name: $REPLY"
+  return rc
+fi
+cmd=( "${reply[@]}" )
+
+if (( ! quiet )); then
+  [[ -n $notice ]] && print -ru2 -- "$notice"
+fi
+
+if (( input )); then
+  "${cmd[@]}" "${args[@]}"
+else
+  "${cmd[@]}" "${args[@]}" </dev/null
+fi

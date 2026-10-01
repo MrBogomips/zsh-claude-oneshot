@@ -1,0 +1,4 @@
+# zco MODEL [effort] [options] [--] prompt...: one-shot Claude Code prompt with any model.
+# Follows normal shell quoting and redirection; the per-model commands are aliases of the same.
+
+_zco_main zco "$@"

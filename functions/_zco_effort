@@ -1,0 +1,24 @@
+# _zco_effort MODEL: apply the haiku rule to the effective effort (S[effort], from _zco_settings).
+#
+# REPLY      the level to pass with --effort, or empty
+# reply[1]   the header field: the level, `settings` when none is passed, `n/a` for haiku models
+# reply[2]   a notice for stderr, or empty: haiku drops the effort, and says so when the effort
+#            came from a source meant for this model (command line, ZCO_EFFORT_<MODEL>, or a
+#            model section of a configuration file)
+
+emulate -L zsh
+
+local model=$1 level=${S[effort]:-} notice= from
+if [[ ${(L)model} == *haiku* ]]; then
+  if [[ -n $level && ${Slayer[effort]} == (cli|env-model|project-model|user-model) ]]; then
+    from=${Ssrc[effort]}
+    [[ $from == 'command line' ]] && from='the command line'
+    notice="$model: haiku does not support effort; '$level' from $from is not passed"
+  fi
+  REPLY=
+  reply=( n/a "$notice" )
+else
+  REPLY=$level
+  reply=( ${level:-settings} '' )
+fi
+return 0

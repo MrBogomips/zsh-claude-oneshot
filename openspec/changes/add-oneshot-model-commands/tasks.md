@@ -84,17 +84,17 @@
 
 ## 5. Claude Code invocation and curated options
 
-- [ ] 5.1 Write tests that run through `zco` and the test double. Cover every claude-invocation and claude-options scenario, plus the prompt-grammar scenarios "Nothing to send" and "Piped input without a prompt". Verify that they fail.
-- [ ] 5.2 Implement `_zco_cmd`: `ZCO_CLAUDE_CMD` as an array or string, or `claude_cmd` from the user file; the `${(Q)${(z)…}}` split; `whence -w` checks; an alias error; and 127 when the command is missing. Verify that the command-resolution scenarios pass, including "Command from the user file" and the no-evaluation case.
-- [ ] 5.3 Implement `_zco_effort`: the effective effort across all layers, value validation with the source named, and the haiku rule that prints the notice only for model-specific sources. Verify that the effort and haiku scenarios pass, including "Haiku section with effort".
-- [ ] 5.4 Implement `_zco_bool` and the core of `_zco_argv`:
+- [x] 5.1 Write tests that run through `zco` and the test double. Cover every claude-invocation and claude-options scenario, plus the prompt-grammar scenarios "Nothing to send" and "Piped input without a prompt". Verify that they fail.
+- [x] 5.2 Implement `_zco_cmd`: `ZCO_CLAUDE_CMD` as an array or string, or `claude_cmd` from the user file; the `${(Q)${(z)…}}` split; `whence -w` checks; an alias error; and 127 when the command is missing. Verify that the command-resolution scenarios pass, including "Command from the user file" and the no-evaluation case.
+- [x] 5.3 Implement `_zco_effort`: the effective effort across all layers, value validation with the source named, and the haiku rule that prints the notice only for model-specific sources. Verify that the effort and haiku scenarios pass, including "Haiku section with effort".
+- [x] 5.4 Implement `_zco_bool` and the core of `_zco_argv`:
   - the fixed 19-position order;
   - permission-mode precedence, with `-n` winning;
   - MCP, and `--continue` or `--resume` (a usage error when both are given);
   - persistence, the budget and the turn limit.
 
   Verify that the exact-argv, permission-mode, MCP, persistence, budget, turn-limit and resume scenarios pass.
-- [ ] 5.5 Add the curated options to `_zco_argv`:
+- [x] 5.5 Add the curated options to `_zco_argv`:
   - agent;
   - the skill prompt prefix, with name validation;
   - the system-prompt groups, with the file-readability check;
@@ -102,16 +102,16 @@
   - settings, fallback model, and `--mcp-config` together with `--strict-mcp-config`.
 
   Verify that the agent, skill, system-prompt, directory and tool-rule, and MCP-configuration scenarios pass.
-- [ ] 5.6 Implement the `extra_args` filter: never-pass flags, managed flags in plain and `--flag=value` form, and short-option bundles. Verify that the three extra-arguments scenarios pass, plus unit cases for `--effort=high`, `-pc` and `--dangerously-skip-permissions=true`.
-- [ ] 5.7 Implement `_zco_main` for text mode:
+- [x] 5.6 Implement the `extra_args` filter: never-pass flags, managed flags in plain and `--flag=value` form, and short-option bundles. Verify that the three extra-arguments scenarios pass, plus unit cases for `--effort=high`, `-pc` and `--dangerously-skip-permissions=true`.
+- [x] 5.7 Implement `_zco_main` for text mode:
   - parse, load the configuration and resolve settings;
   - validate, then detect stdin and redirect to `/dev/null` when it is not a pipe or file;
   - handle the `--show-config` path;
   - run in the current shell and return the exit status.
 
   Verify that the stdin, exit-status and "Showing the effective configuration" scenarios pass end to end, with the terminal-stdin case driven through `zpty`.
-- [ ] 5.8 Add a property test that runs every combination of `-n -c -m -v -q`, effort sources, boolean settings and a set of `extra_args` values. Verify that no forbidden flag (`--bare`, `--safe-mode`, `--dangerously-skip-permissions`, `--allow-dangerously-skip-permissions`) is ever passed, and that every run carrying a forbidden `extra_args` value fails with status 2.
-- [ ] 5.9 Document in the README:
+- [x] 5.8 Add a property test that runs every combination of `-n -c -m -v -q`, effort sources, boolean settings and a set of `extra_args` values. Verify that no forbidden flag (`--bare`, `--safe-mode`, `--dangerously-skip-permissions`, `--allow-dangerously-skip-permissions`) is ever passed, and that every run carrying a forbidden `extra_args` value fails with status 2.
+- [x] 5.9 Document in the README:
   - `ZCO_CLAUDE_CMD` / `claude_cmd`, with wrapper functions (e.g. `claude-work`) and multi-word commands;
   - the permission modes, and what `auto` means in `-p` mode;
   - the `-n` then `-c` workflow, with the note that `-c` may continue an interactive session and `-r ID` as the precise alternative;

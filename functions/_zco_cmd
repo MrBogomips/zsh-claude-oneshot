@@ -1,0 +1,33 @@
+# _zco_cmd: the command words that run Claude Code, in reply.
+#
+# The words come from the claude_cmd setting (S[claude_cmd], from ZCO_CLAUDE_CMD or the user file;
+# an array ZCO_CLAUDE_CMD arrives quoted by _zco_config_get). They are split like a shell command
+# line, honouring quotes, then unquoted. Nothing is expanded or evaluated. The first word may be
+# an external command, a shell function or a builtin. An alias cannot be run from here, so a
+# configured alias is an error; the default `claude` ignores an alias of that name.
+# Returns 2 (alias or reserved word) or 127 (not found) with the message in REPLY.
+
+emulate -L zsh
+
+local spec=${S[claude_cmd]:-claude} src=${Ssrc[claude_cmd]:-built-in} first
+reply=( ${(Q)${(z)spec}} )
+first=$reply[1]
+
+if [[ ${Slayer[claude_cmd]:-default} != default ]] && (( ${+aliases[$first]} )); then
+  REPLY="'$first' (from $src) is an alias, which cannot be run from here; define a function instead, e.g. ${first}() { claude \"\$@\" }"
+  return 2
+fi
+if (( ${reswords[(Ie)$first]} )); then
+  REPLY="'$first' (from $src) is a shell reserved word, not a command"
+  return 2
+fi
+if (( ${+functions[$first]} || ${+builtins[$first]} )); then
+  return 0
+fi
+if [[ $first == */* ]]; then
+  [[ -f $first && -x $first ]] && return 0
+elif whence -p -- $first >/dev/null; then
+  return 0
+fi
+REPLY="$first: command not found (from $src)"
+return 127

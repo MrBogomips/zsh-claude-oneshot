@@ -1,0 +1,32 @@
+# _zco_extra_ok ARG: whether one extra_args entry may be passed to Claude Code.
+# Refused, as a plain flag or in --flag=value form: the flags zsh-claude-oneshot never passes, the
+# flags it manages itself (including every curated option), and bundles of short options (a
+# managed letter could hide in one). Returns 1 with the reason in REPLY.
+
+emulate -L zsh
+setopt extended_glob
+
+local arg=$1 flag=${1%%=*}
+local -a never managed
+never=( --bare --safe-mode --dangerously-skip-permissions --allow-dangerously-skip-permissions )
+managed=(
+  -p --print --model --permission-mode --effort --output-format --input-format --verbose
+  -c --continue -r --resume --strict-mcp-config --no-session-persistence --max-budget-usd
+  --agent --system-prompt --system-prompt-file --append-system-prompt --append-system-prompt-file
+  --add-dir --allowed-tools --allowedTools --disallowed-tools --disallowedTools --settings
+  --mcp-config --fallback-model --max-turns
+)
+
+if (( ${never[(Ie)$flag]} )); then
+  REPLY="extra_args: $arg is never passed to Claude Code"
+  return 1
+fi
+if (( ${managed[(Ie)$flag]} )); then
+  REPLY="extra_args: $arg is managed by zsh-claude-oneshot; use its own option or key instead"
+  return 1
+fi
+if [[ $arg == -[^-]?* ]]; then
+  REPLY="extra_args: $arg looks like a bundle of short options; write each one in its long form"
+  return 1
+fi
+return 0

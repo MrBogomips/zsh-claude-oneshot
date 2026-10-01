@@ -1,0 +1,68 @@
+# _zco_argv MODEL EFFORT PROGRESS: the Claude Code arguments, in reply.
+#
+# Pure: built from S (settings), P (parsed command line), EFFORT (the level to pass, or empty)
+# and PROGRESS (1 to ask for stream-json). The order is fixed, so tests can compare it exactly:
+#    1 -p --model M --permission-mode MODE   2 --effort      3 --agent
+#    4 --system-prompt[-file]                5 --append-system-prompt[-file]
+#    6 --add-dir...   7 --allowed-tools...   8 --disallowed-tools...   9 --settings
+#   10 --mcp-config...   11 --strict-mcp-config   12 --fallback-model   13 --max-turns
+#   14 --continue | --resume ID   15 --no-session-persistence   16 --max-budget-usd
+#   17 extra_args   18 --output-format stream-json --verbose   19 -- PROMPT
+# The prompt is passed after `--` as one argument, so it is never read as an option and no
+# list option can swallow it. Returns 1 with the message in REPLY when an extra_args entry is
+# refused (see _zco_extra_ok) or when a flag that is never passed would end up among the options.
+
+emulate -L zsh
+
+local model=$1 effort=$2 progress=${3:-0} item prompt
+local -a out never
+never=( --bare --safe-mode --dangerously-skip-permissions --allow-dangerously-skip-permissions )
+
+out=( -p --model "$model" --permission-mode "${S[permission_mode]:-auto}" )
+[[ -n $effort ]] && out+=( --effort "$effort" )
+[[ -n ${S[agent]} ]] && out+=( --agent "${S[agent]}" )
+if [[ -n ${S[system_prompt]} ]]; then
+  out+=( --system-prompt "${S[system_prompt]}" )
+elif [[ -n ${S[system_prompt_file]} ]]; then
+  out+=( --system-prompt-file "${S[system_prompt_file]}" )
+fi
+if [[ -n ${S[append_system_prompt]} ]]; then
+  out+=( --append-system-prompt "${S[append_system_prompt]}" )
+elif [[ -n ${S[append_system_prompt_file]} ]]; then
+  out+=( --append-system-prompt-file "${S[append_system_prompt_file]}" )
+fi
+for item in ${(0)S[add_dir]}; do out+=( --add-dir "$item" ); done
+for item in ${(0)S[allowed_tools]}; do out+=( --allowed-tools "$item" ); done
+for item in ${(0)S[disallowed_tools]}; do out+=( --disallowed-tools "$item" ); done
+[[ -n ${S[settings]} ]] && out+=( --settings "${S[settings]}" )
+for item in ${(0)S[mcp_config]}; do out+=( --mcp-config "$item" ); done
+[[ ${S[mcp]} == true ]] || out+=( --strict-mcp-config )
+[[ -n ${S[fallback_model]} ]] && out+=( --fallback-model "${S[fallback_model]}" )
+[[ -n ${S[max_turns]} ]] && out+=( --max-turns "${S[max_turns]}" )
+if [[ -n ${P[continue]:-} ]]; then
+  out+=( --continue )
+elif [[ -n ${P[resume]:-} ]]; then
+  out+=( --resume "${P[resume]}" )
+fi
+[[ ${S[session_persistence]} == false ]] && out+=( --no-session-persistence )
+[[ -n ${S[max_budget_usd]} ]] && out+=( --max-budget-usd "${S[max_budget_usd]}" )
+for item in ${(0)S[extra_args]}; do
+  _zco_extra_ok "$item" || return 1
+  out+=( "$item" )
+done
+(( progress )) && out+=( --output-format stream-json --verbose )
+
+for item in $out; do
+  if (( ${never[(Ie)${item%%=*}]} )); then
+    REPLY="refusing to pass $item to Claude Code"
+    return 1
+  fi
+done
+
+prompt=${P[prompt]:-}
+if [[ -n ${P[skill]:-} ]]; then
+  prompt="/${P[skill]#/}${prompt:+ $prompt}"
+fi
+[[ -n $prompt ]] && out+=( -- "$prompt" )
+reply=( "${out[@]}" )
+return 0

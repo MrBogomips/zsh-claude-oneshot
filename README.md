@@ -310,7 +310,169 @@ append_system_prompt_file = docs/assistant-style.md
 
 ## How Claude Code is run
 
-Each run is a headless `claude -p` call in the current directory.
+Each run is one headless `claude -p` call in the current directory. A plain
+`opus commit local changes`, with no configuration, runs:
+
+```zsh
+claude -p --model opus --permission-mode auto --strict-mcp-config -- 'commit local changes'
+```
+
+The model is passed exactly as named; Claude Code resolves aliases such as `opus` itself,
+including `ANTHROPIC_DEFAULT_OPUS_MODEL` and friends. The prompt always comes last, after `--`,
+as a single argument, so it is never mistaken for an option.
+
+### The Claude Code command
+
+The command is `claude` unless `ZCO_CLAUDE_CMD`, or `claude_cmd` in the user file, names
+another. It may be a shell function, such as a wrapper that uses a second Claude Code
+configuration, or several words:
+
+```zsh
+claude-work() { CLAUDE_CONFIG_DIR=~/.claude-work claude "$@" }
+export ZCO_CLAUDE_CMD=claude-work
+
+export ZCO_CLAUDE_CMD="env CLAUDE_CONFIG_DIR=$HOME/.claude-work claude"   # $HOME expands here, once
+ZCO_CLAUDE_CMD=(env CLAUDE_CONFIG_DIR=$HOME/.claude-work claude)            # an array works too
+```
+
+A string is split into words the way zsh splits a command line, honouring quotes, but nothing
+in it is expanded or evaluated. The command runs in the current shell, which is what makes
+functions work; they run with zsh's default options. An alias cannot be used, because aliases
+only expand where a line is typed: define a function instead. An alias named `claude` does not
+affect the default command. If the command cannot be found, the run fails with status 127.
+
+### Permission modes
+
+The permission mode is `auto` unless the configuration says otherwise (`permission_mode`,
+`ZCO_PERMISSION_MODE` or `--permission-mode`). In `-p` mode nobody can approve a tool call, so
+any call your rules do not allow is denied without a question. With a mode that asks for
+approval, a run would "succeed" having done nothing. `auto` lets Claude Code's classifier
+approve routine actions and block risky ones.
+
+If `auto` is not available for your account, provider or model, set another mode, for example
+`permission_mode = acceptEdits` in `~/.zco.config`. The value is passed through unchanged, so
+new Claude Code modes work without a plugin update. A project file cannot ask for
+`bypassPermissions`.
+
+### Dry run, then go ahead
+
+`-n` runs in `plan` mode, whatever else is configured: Claude Code reads and plans but changes
+nothing. Continue the same session to carry the plan out:
+
+```zsh
+haiku -n reorg this folder by year        # read the plan
+haiku -c go ahead                         # the same session, now in the normal mode
+```
+
+`-c` continues the most recent Claude Code session in the current directory, which may be an
+interactive session you had open there. To pick a session precisely, use `-r ID`
+(`--resume ID`); the ID is required, because the interactive picker cannot work in `-p` mode.
+`-c` and `-r` cannot be combined. Both need sessions to be saved, which is the default; set
+`session_persistence = off` (or `ZCO_SESSION_PERSISTENCE=0`) to pass `--no-session-persistence`.
+
+### Effort and haiku
+
+`--effort` is passed only when you ask for one: an effort word, `-e`, `ZCO_EFFORT_<MODEL>`,
+`ZCO_EFFORT` or `effort` in a configuration file. Otherwise Claude Code's own effort settings
+apply. The header shows `settings` in that case.
+
+Haiku models (any model whose name contains `haiku`) take no effort, so `--effort` is never
+passed to them and the header shows `n/a`. When the effort came from a source meant for that
+model, the command line, `ZCO_EFFORT_<MODEL>` or a `[haiku]` section, one notice says it was
+dropped. An effort meant for every model, `ZCO_EFFORT` or an entry outside sections, is
+dropped silently, so a global default does not make every haiku run print a notice.
+
+### MCP servers
+
+MCP servers are skipped by default with `--strict-mcp-config`. Together with reading stdin from
+`/dev/null`, this brought a trivial haiku prompt from about 9 seconds to about 3 in our
+measurements. `-m` (or `mcp = true`) loads the MCP servers Claude Code is
+configured with. `--mcp-config FILE` (or `mcp_config` in the user file) loads only the servers in
+that file; together with `-m`, it adds them to the configured ones.
+
+### Budget and turns
+
+`--max-budget-usd AMOUNT` (or `max_budget_usd`) stops the run when its cost would exceed the
+amount, and `--max-turns N` (or `max_turns`) after N agentic turns.
+
+### Options and the Claude Code arguments they become
+
+| zsh-claude-oneshot | Claude Code | Key |
+|---|---|---|
+| effort word, `-e`, `--effort LEVEL` | `--effort LEVEL` (never for haiku) | `effort` |
+| `-n`, `--dry-run` | `--permission-mode plan` | — |
+| `--permission-mode MODE` | `--permission-mode MODE` | `permission_mode` |
+| `-c`, `--continue` | `--continue` | — |
+| `-r`, `--resume ID` | `--resume ID` | — |
+| `-m`, `--mcp` | no `--strict-mcp-config` | `mcp` |
+| `-a`, `--agent NAME` | `--agent NAME` | `agent` |
+| `-s`, `--skill NAME` | the prompt starts with `/NAME` | — |
+| `--system-prompt TEXT` | `--system-prompt TEXT` | `system_prompt` |
+| `--system-prompt-file PATH` | `--system-prompt-file PATH` | `system_prompt_file` |
+| `--append-system-prompt TEXT` | `--append-system-prompt TEXT` | `append_system_prompt` |
+| `--append-system-prompt-file PATH` | `--append-system-prompt-file PATH` | `append_system_prompt_file` |
+| `--add-dir DIR` | `--add-dir DIR`, once per directory | `add_dir` |
+| `--allowed-tools RULE` | `--allowed-tools RULE`, once per rule | `allowed_tools` |
+| `--disallowed-tools RULE` | `--disallowed-tools RULE`, once per rule | `disallowed_tools` |
+| `--settings VALUE` | `--settings VALUE` | `settings` |
+| `--mcp-config PATH` | `--mcp-config PATH`, once per file | `mcp_config` |
+| `--fallback-model MODEL` | `--fallback-model MODEL` | `fallback_model` |
+| `--max-turns N` | `--max-turns N` | `max_turns` |
+| `--max-budget-usd AMOUNT` | `--max-budget-usd AMOUNT` | `max_budget_usd` |
+| — | `--no-session-persistence` when false | `session_persistence` |
+
+The arguments always come in this order:
+
+```text
+-p --model M --permission-mode MODE  --effort  --agent  --system-prompt[-file]
+--append-system-prompt[-file]  --add-dir…  --allowed-tools…  --disallowed-tools…  --settings
+--mcp-config…  --strict-mcp-config  --fallback-model  --max-turns  --continue | --resume ID
+--no-session-persistence  --max-budget-usd  extra_args…  --output-format stream-json --verbose
+-- PROMPT
+```
+
+### Skills: `-s` or `/skill`
+
+`-s NAME` and typing `/NAME` at the start of the prompt send the same prompt. `-s` checks the
+name (letters, digits and `: . _ -`, so plugin skills such as `my-plugin:review` work), accepts
+a leading `/`, and counts as something to send, so `haiku -s prepare-commit` needs no prompt.
+
+### System prompts: append rather than replace
+
+`--system-prompt` replaces Claude Code's whole default system prompt, including its guidance on
+using tools. For a house style or standing instructions, append instead:
+`append_system_prompt` or `append_system_prompt_file`. Keep replacement for special cases. The
+text and file forms of the same prompt count as one setting; giving both in one place is an
+error, and a prompt file that cannot be read stops the run before Claude Code starts.
+
+### Other Claude Code flags: `extra_args`
+
+Any Claude Code flag without a dedicated option can be added in the user file, one argument per
+line, and is passed after the options above:
+
+```ini
+extra_args = --name
+extra_args = nightly-summary
+```
+
+An entry is refused when it is a flag zsh-claude-oneshot manages itself (such as `--model`,
+`--effort` or `--continue`, plain or as `--flag=value`), a bundle of short options, or one of the
+flags that are never passed.
+
+### Flags that are never passed
+
+`--bare`, `--safe-mode`, `--dangerously-skip-permissions` and
+`--allow-dangerously-skip-permissions` are never passed, whatever the options, variables and
+configuration files say, so your CLAUDE.md files, hooks and permission rules stay in force. A
+test runs every combination of options, effort sources and settings to check this.
+
+### Standard input and exit status
+
+Input piped or redirected into the command (`git diff | haiku …`, `haiku … < notes.txt`) is
+passed to Claude Code unchanged, together with the prompt if there is one. Otherwise Claude
+Code reads from `/dev/null`, so it never waits for the terminal. The command returns Claude
+Code's exit status, 2 for a usage or configuration error, and 127 when the Claude Code command
+cannot be found.
 
 ## Output
 
@@ -326,7 +488,20 @@ Tab completion covers options, effort words and option values.
 
 ## Security
 
-`claude -p` skips Claude Code's workspace-trust dialog.
+- **Workspace trust.** `claude -p` skips Claude Code's workspace-trust dialog. Running a model
+  command inside a directory therefore works like an interactive session in which you accepted
+  the dialog: Claude Code loads the repository's CLAUDE.md and `.claude/` settings. Run
+  commands in repositories you trust. The header names the directory every time.
+- **Project files.** A `.zco.config` in the current directory or a parent is read
+  automatically. It can only set what the repository could already set through its own
+  `.claude/` directory; the keys that could run programs are refused (see
+  [Keys only the user file may set](#keys-only-the-user-file-may-set)). When a project file
+  applies, the header ends with `· local config`. `opus --show-config` shows what it sets, and
+  `ZCO_LOCAL_CONFIG=0` ignores project files altogether.
+- **No evaluation.** Configuration files and `ZCO_CLAUDE_CMD` are parsed as data. Nothing in
+  them is expanded, substituted or executed.
+- **Bypass flags.** The plugin never passes the flags that turn off permission checks, hooks or
+  CLAUDE.md files; see [Flags that are never passed](#flags-that-are-never-passed).
 
 ## Related projects
 

@@ -218,6 +218,23 @@ zt_settings() {   # model arg...
   return 0
 }
 
+# Run `zco ARG...` in this shell (stdin /dev/null); the plugin must be loaded.
+zt_zco() { zt_run zco "$@" }
+
+# stderr of the last run without the header line (the first line, when it holds " · " or " - ").
+zt_stderr_body() {
+  local -a lines
+  lines=( "${(@f)ZT_ERR}" )
+  [[ ${lines[1]:-} == *(' · '|' - ')* ]] && lines[1]=()
+  REPLY=${(pj:\n:)lines}
+}
+
+assert_stderr_body_empty() {   # [message]
+  zt_stderr_body
+  [[ -z $REPLY ]] && return 0
+  zt_fail "${1:-stderr should hold nothing but the header}" "  stderr: ${(qqqq)ZT_ERR}"
+}
+
 assert_setting() {   # key value [source]
   assert_eq "${S[$1]-<unset>}" "$2" "value of $1"
   (( $# < 3 )) || assert_eq "${Ssrc[$1]-<unset>}" "$3" "source of $1"
