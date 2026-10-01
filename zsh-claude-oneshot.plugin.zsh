@@ -36,10 +36,11 @@
   else
     models=( ${=zk[default:models]} )
   fi
-  if (( ${+ZCO_PREFIX} )); then prefix=$ZCO_PREFIX; else prefix=${cfg[user||prefix]-}; fi
+  # An empty variable counts as unset, except ZCO_MODELS= (no per-model commands).
+  if [[ -n ${ZCO_PREFIX:-} ]]; then prefix=$ZCO_PREFIX; else prefix=${cfg[user||prefix]-}; fi
 
   typeset -g _zco_raw_line_file=${cfg[user||raw_line]-}
-  if (( ${+ZCO_RAW_LINE} )); then
+  if [[ -n ${ZCO_RAW_LINE:-} ]]; then
     _zco_raw_mode "$ZCO_RAW_LINE" ||
       print -ru2 -- "zsh-claude-oneshot: ZCO_RAW_LINE='$ZCO_RAW_LINE' is not literal, shell or off; using literal"
   elif [[ -n $_zco_raw_line_file ]] && ! _zco_raw_mode "$_zco_raw_line_file"; then

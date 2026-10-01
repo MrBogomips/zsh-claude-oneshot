@@ -483,3 +483,51 @@ test_forms_in_different_layers_highest_wins() {
   assert_setting system_prompt 'from user'
   assert_setting system_prompt_file ''
 }
+
+# ------------------------------------------------------------------ review follow-ups
+
+test_home_with_pattern_characters_is_still_not_a_project_file() {
+  export HOME="$ZT_TMP/home (work) [x]"
+  mkdir -p "$HOME/sub" && cd "$HOME/sub"
+  zt_user_config $'claude_cmd = claude\nmodels = opus'
+  zt_settings opus x
+  assert_eq $ZT_RC 0 "$REPLY"
+  assert_eq "$zco_files[2]" '' "the user file must not also be read as the project file"
+}
+
+test_empty_variables_count_as_unset() {
+  zt_user_config $'effort = low\npermission_mode = acceptEdits'
+  ZCO_EFFORT=high ZCO_EFFORT_OPUS= zt_settings opus x
+  assert_setting effort high ZCO_EFFORT
+  ZCO_EFFORT= ZCO_PERMISSION_MODE= zt_settings opus x
+  assert_setting effort low '~/.zco.config:1'
+  assert_setting permission_mode acceptEdits
+}
+
+test_empty_local_config_switch_counts_as_unset() {
+  zt_write ~/proj/.zco.config 'agent = rev'
+  cd ~/proj
+  ZCO_LOCAL_CONFIG= zt_settings opus x
+  assert_eq $ZT_RC 0 "$REPLY"
+  assert_eq "$zco_files[2]" "$HOME/proj/.zco.config"
+}
+
+test_control_characters_in_a_file_are_refused() {
+  zt_mkdir_cd ~/repo/deep
+  print -rn -- $'permission_mode = bypassPermissions\0\n' > ~/repo/.zco.config
+  zt_settings opus x
+  assert_config_error '~/repo/.zco.config:1' 'control character'
+  print -rn -- $'append_system_prompt = --safe-mode\0\n' > ~/repo/.zco.config
+  zt_settings opus x
+  assert_config_error '~/repo/.zco.config:1'
+  print -rn -- $'agent = rev\e[8m\n' > ~/repo/.zco.config
+  zt_settings opus x
+  assert_config_error '~/repo/.zco.config:1' 'control character'
+  print -rn -- $'ag\e]52;c;eA==\aent = x\n' > ~/repo/.zco.config
+  zt_settings opus x
+  assert_config_error 'control character'
+  assert_not_contains "$REPLY" $'\e' "the message must not echo the escape sequence"
+  print -rn -- $'agent = a\tb\r\n' > ~/repo/.zco.config
+  zt_settings opus x
+  assert_eq $ZT_RC 0 "tabs and CRLF line ends are fine: $REPLY"
+}

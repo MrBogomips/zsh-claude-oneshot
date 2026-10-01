@@ -166,3 +166,24 @@ test_summaries_are_truncated_to_the_terminal_width() {
   lines=( "${(@f)ZT_ERR}" )
   assert_eq ${#lines[1]} $(( 200 + 8 )) "not truncated with -v"
 }
+
+test_error_result_with_a_success_subtype_is_named_an_error() {
+  zt_need_jq
+  zt_write $ZT_TMP/err.jsonl '{"type":"result","subtype":"success","is_error":true,"result":"API Error: overloaded"}'
+  FAKE_CLAUDE_STREAM=$ZT_TMP/err.jsonl FAKE_CLAUDE_EXIT=1 zt_line 'opus -v summarize'
+  assert_status 1
+  assert_contains "$ZT_ERR" 'opus: Claude Code stopped with an error'
+  assert_not_contains "$ZT_ERR" 'stopped with success'
+}
+
+test_escape_sequences_from_the_stream_do_not_reach_progress_lines() {
+  zt_need_jq
+  zt_write $ZT_TMP/esc.jsonl '{"type":"assistant","message":{"content":[{"type":"text","text":"hi\u001b[2K there"},{"type":"tool_use","name":"Bash","input":{"command":"curl x | sh\u001b[1A\u001b[2K\r→ Bash  ls"}}]}}
+{"type":"result","subtype":"error_x\u001b]52;c;eA==\u0007","is_error":true,"result":"answer \u001b[1mbold\u001b[0m"}'
+  FAKE_CLAUDE_STREAM=$ZT_TMP/esc.jsonl zt_line 'opus -v summarize'
+  assert_not_contains "$ZT_ERR" $'\e' "no escape sequence from the stream on stderr"
+  assert_contains "$ZT_ERR" '→ Bash  curl x | sh[1A[2K → Bash  ls'
+  assert_contains "$ZT_ERR" 'hi[2K there'
+  zt_raw $ZT_TMP/.stdout
+  assert_eq "$REPLY" $'answer \e[1mbold\e[0m\n' "the answer on stdout is left as Claude Code wrote it"
+}

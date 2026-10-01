@@ -7,7 +7,8 @@
 #
 # Nothing in the file is evaluated. Lines are `key = value`; blank lines and lines starting with
 # # or ; are ignored; one pair of matching quotes around the whole value is removed; a relative
-# path resolves against the file's directory and a leading ~/ against $HOME.
+# path resolves against the file's directory and a leading ~/ against $HOME. Control characters
+# other than tab are refused.
 #
 #   -l  load time: read only models, prefix and raw_line outside sections, report nothing.
 # Returns 1 with "file:line: message" in REPLY on the first problem.
@@ -32,6 +33,13 @@ while IFS= read -r line || [[ -n $line ]]; do
   n+=1
   src=${shown}:$n
   line=${line%$'\r'}
+  # A NUL would pass the checks below and then be cut off by execve, and escape sequences would
+  # reach the terminal: refuse every control character but tab.
+  if [[ ${line//$'\t'/} == *[[:cntrl:]]* ]]; then
+    (( load )) && continue
+    REPLY="$src: control characters are not allowed in a configuration file"
+    return 1
+  fi
   line=${${line##[[:space:]]##}%%[[:space:]]##}
   [[ -z $line || $line == [\#\;]* ]] && continue
 

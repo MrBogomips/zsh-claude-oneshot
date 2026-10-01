@@ -184,3 +184,20 @@ test_forbidden_flag_in_the_prompt_is_just_text() {
   assert_status 0
   assert_argv_has -- '--dangerously-skip-permissions is a flag I want explained'
 }
+
+test_project_file_with_a_nul_byte_cannot_reach_claude_code() {
+  zt_mkdir_cd ~/repo/deep/dir
+  print -rn -- $'permission_mode = bypassPermissions\0\nappend_system_prompt = --safe-mode\0\n' > ~/repo/.zco.config
+  zt_zco opus hello
+  assert_status 2
+  assert_not_run
+}
+
+test_arguments_with_a_nul_byte_are_refused() {
+  zt_zco opus -a $'--bare\0x' hello
+  assert_status 2
+  assert_not_run
+  zt_zco opus -- $'hello\0--safe-mode'
+  assert_status 2
+  assert_not_run
+}

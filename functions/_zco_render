@@ -5,16 +5,19 @@
 # Output lines, one per event (see _zco_route for where each goes):
 #   P<tool>\t<summary>   a tool call; the summary is the call's most relevant input, on one line
 #   T<line>              a line of an intermediate text message
-#   E<subtype>           an error result
+#   E<subtype>           an error result (the subtype is empty when it says "success")
 #   R<line>              a line of the final answer
 #   S<ms>\t<turns>\t<usd>  the closing statistics
 #   X<raw>               a line that is not a JSON object
-# Only jq 1.6 builtins are used, and every field access tolerates a missing field.
+# Only jq 1.6 builtins are used, and every field access tolerates a missing field. Control
+# characters are removed from the P, T and E lines, so the stream cannot drive the terminal
+# through them; the answer (R) is left exactly as Claude Code wrote it.
 
 emulate -L zsh
 
 REPLY='
-def one: tostring | gsub("[ \t]*[\r\n]+[ \t]*"; " ") | gsub("\t"; " ") | sub("^ +"; "") | sub(" +$"; "");
+def clean: gsub("[\u0000-\u0008\u000b-\u001f\u007f-\u009f]"; "");
+def one: tostring | gsub("[ \t]*[\r\n]+[ \t]*"; " ") | gsub("\t"; " ") | clean | sub("^ +"; "") | sub(" +$"; "");
 def rel:
   if $pwd != "" and startswith($pwd + "/") then .[($pwd | length) + 1:]
   elif $rpwd != "" and startswith($rpwd + "/") then .[($rpwd | length) + 1:]
@@ -38,11 +41,12 @@ def summary:
       ( ($e.message.content? // []) | if type == "array" then .[] else empty end
         | if type != "object" then empty
           elif .type == "tool_use" then "P" + ((.name // "?") | one) + "\t" + summary
-          elif .type == "text" then ((.text // "") | tostring | split("\n")[] | "T" + .)
+          elif .type == "text" then ((.text // "") | tostring | split("\n")[] | "T" + clean)
           else empty end )
     elif $e.type == "result" then
       ( if ($e.is_error? == true) or (($e.subtype? // "success") != "success")
-        then "E" + (($e.subtype? // "error") | one) else empty end ),
+        then "E" + (($e.subtype? // "success") | if . == "success" then "" else one end)
+        else empty end ),
       ( if ($e.result? | type) == "string"
         then ($e.result | if . == "" then "R" else (split("\n")[] | "R" + .) end)
         else empty end ),

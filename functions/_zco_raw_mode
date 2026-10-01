@@ -3,14 +3,15 @@
 # With VALUE: normalise it (literal/on/1/true/yes, shell, off/0/false/no; any case); returns 1
 # with REPLY=literal when it is none of these.
 # Without VALUE: the default mode for a typed line: ZCO_RAW_LINE (read every time), else the user
-# file's raw_line cached when the plugin loaded, else literal. Invalid values mean literal.
+# file's raw_line cached when the plugin loaded, else literal. Invalid values mean literal; an
+# empty ZCO_RAW_LINE counts as unset.
 
 emulate -L zsh
 
 local value
 if (( $# )); then
   value=$1
-elif (( ${+ZCO_RAW_LINE} )); then
+elif [[ -n ${ZCO_RAW_LINE:-} ]]; then
   value=$ZCO_RAW_LINE
 else
   value=${_zco_raw_line_file:-literal}

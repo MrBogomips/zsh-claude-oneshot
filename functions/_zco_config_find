@@ -3,7 +3,8 @@
 # reply=( USER PROJECT ); an element is empty when there is no such file.
 #   USER     $ZCO_CONFIG, or else ~/.zco.config
 #   PROJECT  the nearest .zco.config in $PWD or a parent; neither the user file nor
-#            ~/.zco.config ever counts as a project file. None when ZCO_LOCAL_CONFIG is false.
+#            ~/.zco.config ever counts as a project file. None when ZCO_LOCAL_CONFIG is false
+#            (an empty ZCO_LOCAL_CONFIG counts as unset).
 # Returns 1 with the message in REPLY when ZCO_LOCAL_CONFIG is not a boolean.
 
 emulate -L zsh
@@ -12,7 +13,7 @@ local user=${ZCO_CONFIG:-$HOME/.zco.config} project= dir file user_real home_rea
 reply=()
 [[ -e $user ]] || user=
 
-if (( ${+ZCO_LOCAL_CONFIG} )); then
+if [[ -n ${ZCO_LOCAL_CONFIG:-} ]]; then
   if ! _zco_bool "$ZCO_LOCAL_CONFIG"; then
     REPLY="ZCO_LOCAL_CONFIG: '$ZCO_LOCAL_CONFIG' is not a boolean (use true/false, yes/no, on/off or 1/0)"
     return 1

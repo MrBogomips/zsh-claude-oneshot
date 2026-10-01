@@ -34,7 +34,7 @@ while IFS= read -r line; do
     (R)
       print -r -- "$rest" ;;
     (E)
-      print -ru2 -- "$name: Claude Code stopped with $rest" ;;
+      print -ru2 -- "$name: Claude Code stopped with ${rest:-an error}" ;;
     (S)
       (( verbose )) || continue
       ms=${rest%%$'\t'*} rest=${rest#*$'\t'}

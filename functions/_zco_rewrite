@@ -119,10 +119,17 @@ fi
 prompt=${${prompt##[[:space:]]##}%%[[:space:]]##}
 [[ -z $prompt ]] && return 1
 [[ $prompt != *[^[:alnum:][:blank:],._:/@%+-]* ]] && return 1
+# Already one quoted word: a single '...' (the '\'' joins of ${(qq)...} allowed), "..." or $'...'
+# segment. A word glued from quoted parts and an expansion, like 'x'$(cmd)'y', is prompt text.
 local -a t
+local inner=
 t=( ${(z)prompt} )
-if (( $#t == 1 )) && [[ $prompt == (\'*\'|\"*\"|\$\'*\') ]]; then
-  return 1
+if (( $#t == 1 )); then
+  case $prompt in
+    (\'*\') inner=${${prompt[2,-2]}//\'\\\'\'/}; [[ $inner == *\'* ]] || return 1 ;;
+    (\$\'*\') inner=${${prompt[3,-2]}//\\?/}; [[ $inner == *\'* ]] || return 1 ;;
+    (\"*\") inner=${${prompt[2,-2]}//\\?/}; [[ $inner == *\"* ]] || return 1 ;;
+  esac
 fi
 [[ $prefix == *[[:space:]] ]] || prefix+=' '
 REPLY=$prefix${(qq)prompt}${tail:+ $tail}

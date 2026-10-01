@@ -283,3 +283,10 @@ test_prompt_words_are_joined_with_single_spaces() {
   assert_parsed prompt 'a  b c  d'
   assert_parsed has_prompt 1
 }
+
+test_effort_level_is_not_a_pattern() {
+  zt_parse -e '*' x
+  assert_parse_error "'*'"
+  zt_parse --effort='h*' x
+  assert_parse_error "'h*'"
+}

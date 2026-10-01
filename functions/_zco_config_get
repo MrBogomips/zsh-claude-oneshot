@@ -2,6 +2,7 @@
 #
 # Precedence, highest first: command line, environment (ZCO_EFFORT_<MODEL> above ZCO_EFFORT),
 # project file [MODEL] section, project file, user file [MODEL] section, user file, built-in.
+# An empty variable counts as unset, except ZCO_MODELS.
 # Sets the caller's
 #   cv  the value (lists: NUL-terminated entries)
 #   cl  the layer it came from: cli env-model env project-model project user-model user default
@@ -81,6 +82,7 @@ for var in $vars; do
   else
     value=${(P)var}
   fi
+  [[ -n $value || $key == models ]] || continue   # an empty variable counts as unset
   if [[ -n $value && ${zk[type:$key]} != rawline ]]; then
     if ! _zco_check ${zk[type:$key]} "$value"; then
       REPLY="$var: $REPLY"

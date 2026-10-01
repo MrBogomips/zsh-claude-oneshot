@@ -10,7 +10,8 @@
 #   17 extra_args   18 --output-format stream-json --verbose   19 -- PROMPT
 # The prompt is passed after `--` as one argument, so it is never read as an option and no
 # list option can swallow it. Returns 1 with the message in REPLY when an extra_args entry is
-# refused (see _zco_extra_ok) or when a flag that is never passed would end up among the options.
+# refused (see _zco_extra_ok), when a flag that is never passed would end up among the options,
+# or when an argument contains a NUL byte.
 
 emulate -L zsh
 
@@ -53,8 +54,8 @@ done
 (( progress )) && out+=( --output-format stream-json --verbose )
 
 for item in $out; do
-  if (( ${never[(Ie)${item%%=*}]} )); then
-    REPLY="refusing to pass $item to Claude Code"
+  if (( ${never[(Ie)${${item%%$'\0'*}%%=*}]} )); then
+    REPLY="refusing to pass ${item%%$'\0'*} to Claude Code"
     return 1
   fi
 done
@@ -63,6 +64,13 @@ prompt=${P[prompt]:-}
 if [[ -n ${P[skill]:-} ]]; then
   prompt="/${P[skill]#/}${prompt:+ $prompt}"
 fi
+# execve cuts an argument at a NUL byte, so what Claude Code got would differ from what was checked.
+for item in "${out[@]}" "$prompt"; do
+  if [[ $item == *$'\0'* ]]; then
+    REPLY="refusing to pass an argument that contains a NUL byte"
+    return 1
+  fi
+done
 [[ -n $prompt ]] && out+=( -- "$prompt" )
 reply=( "${out[@]}" )
 return 0

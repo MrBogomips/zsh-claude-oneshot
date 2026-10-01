@@ -261,3 +261,11 @@ test_rewriting_a_rewrite_changes_nothing() {
     done
   done
 }
+
+test_glued_quotes_with_expansions_are_prompt_text() {
+  assert_rewrite literal "opus 'x'\$(touch pwned)'y'" "opus ''\\''x'\\''\$(touch pwned)'\\''y'\\'''"
+  assert_rewrite literal 'opus "a"$(id)"b"' "opus '\"a\"\$(id)\"b\"'"
+  assert_rewrite literal 'opus "a"`id`"b"' "opus '\"a\"\`id\`\"b\"'"
+  assert_rewrite literal "opus \$'a'\$(id)\$'b'" "opus '\$'\\''a'\\''\$(id)\$'\\''b'\\'''"
+  assert_rewrite literal 'opus "say \"hi\" now"' 'opus "say \"hi\" now"'
+}

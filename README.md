@@ -251,6 +251,8 @@ list, and values given on the command line are appended. The text and file forms
 prompt (`system_prompt` and `system_prompt_file`, and the two `append_` keys) count as one
 setting: the higher layer wins, whichever form it uses.
 
+A variable set to an empty value counts as unset, so `ZCO_EFFORT=` does not hide the effort in
+your files; the one exception is `ZCO_MODELS=`, which means no per-model commands.
 `ZCO_EFFORT_<MODEL>` uses the model name in upper case, with any character other than letters,
 digits and `_` replaced by `_`: `ZCO_EFFORT_OPUS`, `ZCO_EFFORT_CLAUDE_SONNET_4_5`.
 Boolean values accept `1`, `true`, `yes`, `on` and `0`, `false`, `no`, `off`, in any case.
