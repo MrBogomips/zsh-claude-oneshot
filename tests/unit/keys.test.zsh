@@ -35,7 +35,7 @@ test_key_table_matches_the_configuration_spec_row_by_row() {
   local -A zk
   _zco_keys
   zt_spec_key_rows
-  local -a rows=( $reply ) spec_keys cells keys clis
+  local -a rows=( $reply ) spec_keys cells keys clis forms
   assert_ne $#rows 0 "the key table was not found in $ZT_KEY_SPEC"
   local row k cli i project
   for row in $rows; do
@@ -63,10 +63,12 @@ test_key_table_matches_the_configuration_spec_row_by_row() {
       if [[ ${cells[3]} == *—* ]]; then
         assert_eq "${zk[cli:$k]:-}" '' "$k: has no command-line form"
       elif (( $#keys > 1 && $#clis == $#keys )); then
-        assert_true "$k: command-line form $clis[i]" eval '(( ${${(s: :)zk[cli:$k]}[(Ie)$clis[i]]} ))'
+        forms=( ${(s: :)zk[cli:$k]} )
+        assert_true "$k: command-line form $clis[i]" eval '(( ${forms[(Ie)$clis[i]]} ))'
       else
+        forms=( ${(s: :)zk[cli:$k]} )
         for cli in $clis; do
-          assert_true "$k: command-line form $cli" eval '(( ${${(s: :)zk[cli:$k]}[(Ie)$cli]} ))'
+          assert_true "$k: command-line form $cli" eval '(( ${forms[(Ie)$cli]} ))'
         done
       fi
     done
@@ -107,5 +109,6 @@ test_command_line_options() {
   for o in ${(s: :)zk[opts]}; do
     assert_ne "${zk[odesc:$o]:-}" '' "$o has a description"
   done
-  assert_true "--shell and --literal are options" eval '(( ${${(s: :)zk[opts]}[(Ie)--shell]} && ${${(s: :)zk[opts]}[(Ie)--literal]} ))'
+  local -a opts=( ${(s: :)zk[opts]} )
+  assert_true "--shell and --literal are options" eval '(( ${opts[(Ie)--shell]} && ${opts[(Ie)--literal]} ))'
 }

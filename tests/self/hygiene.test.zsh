@@ -22,6 +22,7 @@ described pattern: $abs <!-- hygiene: allow -->"
 }
 
 test_passes_on_the_repository() {
+  whence -p git >/dev/null || zt_skip "git is not installed (the CI matrix jobs run the hygiene check)"
   zt_run zsh -f $ZT_TESTS/check-hygiene.zsh
   assert_status 0
   assert_contains "$ZT_OUT" "0 problems"

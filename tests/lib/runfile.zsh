@@ -50,6 +50,7 @@ zt_runfile_main() {
       print -r -- "ok - $label: $t # SKIP $reason"
     elif (( rc == 0 )) && [[ ! -s $ZT_FAILFILE ]]; then
       print -r -- "ok - $label: $t"
+      [[ -n ${ZT_VERBOSE:-} && -s $log ]] && sed 's/^/#   /' $log
     else
       failed+=1
       print -r -- "not ok - $label: $t"

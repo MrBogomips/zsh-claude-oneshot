@@ -34,9 +34,9 @@ zt_probe_line_editor() {
   zt_pty_wait 5 ' -- hel' || zt_fail "the typed prefix was not drawn"
   local -F deadline=$(( EPOCHREALTIME + 5 ))
   while (( EPOCHREALTIME < deadline )); do
-    zselect -t 10
+    zselect -t 50                  # leave the asynchronous fetch alone for a moment
     zt_pty_send $'\x18\x10'
-    zselect -t 5
+    zselect -t 10
     [[ -s $ZT_TMP/probe && $(<$ZT_TMP/probe) != *'suggestion=[]'* ]] && break
   done
   zt_pty_keys $'\x15\r'          # Ctrl-U clears the line, Enter gives a new prompt
@@ -63,10 +63,20 @@ zt_coexist() {   # order: before or after
     "source ${(q)ZT_DEPS}/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
   )
   zt_probe_widget
+  local probe_widget=$REPLY baseline probe
+
+  # Baseline: what the two plugins do on this zsh without zsh-claude-oneshot. (On zsh 5.3,
+  # for example, zsh-autosuggestions shows no suggestion next to zsh-syntax-highlighting.)
+  zt_pty_start 'bindkey -e' "$probe_widget" "${plugins[@]}"
+  zt_probe_line_editor
+  zt_pty_stop
+  baseline=$(<$ZT_TMP/probe)
+  rm -f -- $ZT_TMP/probe $ZT_TMP/history
+
   if [[ $1 == before ]]; then
-    zt_pty_start 'bindkey -e' "$REPLY" "${plugins[@]}" "source ${(q)ZT_PLUGIN}"
+    zt_pty_start 'bindkey -e' "$probe_widget" "${plugins[@]}" "source ${(q)ZT_PLUGIN}"
   else
-    zt_pty_start 'bindkey -e' "$REPLY" "source ${(q)ZT_PLUGIN}" "${plugins[@]}"
+    zt_pty_start 'bindkey -e' "$probe_widget" "source ${(q)ZT_PLUGIN}" "${plugins[@]}"
   fi
   zt_pty_run "opus don't touch tests > seriously"
   zt_pty_run "sonnet a; b | c"
@@ -77,9 +87,17 @@ zt_coexist() {   # order: before or after
   zt_claude_argv 1
   assert_eq "${reply[-1]}" "don't touch tests > seriously" "first prompt intact"
   assert_file_absent seriously
-  local probe=$(<$ZT_TMP/probe)
-  assert_contains "$probe" 'suggestion=[lo-world]' "zsh-autosuggestions still suggests"
-  assert_not_contains "$probe" 'highlights=0' "zsh-syntax-highlighting still highlights"
+
+  probe=$(<$ZT_TMP/probe)
+  assert_eq "${probe%% *}" "${baseline%% *}" "zsh-autosuggestions suggests as it does without zsh-claude-oneshot"
+  if [[ $baseline == *'highlights=0' ]]; then
+    assert_match "$probe" '*highlights=0'
+  else
+    assert_not_contains "$probe" 'highlights=0' "zsh-syntax-highlighting still highlights"
+  fi
+  if [[ $ZSH_VERSION == 5.<9->* || $ZSH_VERSION == <6->* ]]; then
+    assert_eq "${baseline%% *}" 'suggestion=[lo-world]' "on this zsh the baseline must show the suggestion"
+  fi
 }
 
 # @scenario raw-line-capture: Loaded before and after zsh-syntax-highlighting

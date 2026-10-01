@@ -217,16 +217,16 @@
 
 ## 10. CI and integration checks
 
-- [ ] 10.1 Add `.github/workflows/ci.yml` with:
+- [x] 10.1 Add `.github/workflows/ci.yml` with:
   - an Ubuntu and macOS matrix running lint, the full suite, the hygiene check and scenario coverage;
   - the `zshusers/zsh:5.3.1` container job;
   - pinned clones of the coexistence plugins into `tests/.deps/`.
 
   Verify with `actionlint` if available, and by running the same commands locally on macOS.
-- [ ] 10.2 Write `tests/smoke/real-claude.test.zsh`, gated by `ZCO_SMOKE=1`.
+- [x] 10.2 Write `tests/smoke/real-claude.test.zsh`, gated by `ZCO_SMOKE=1`.
   - No-prompt parse-time probes, with no API call: the hidden flags are still accepted, `--skill` is still unknown, and a missing agent is rejected.
   - A few haiku calls: the `--` separator with a variadic flag, `auto` and `plan` accepted, the stream-json field names read by the jq filter, and fast-start timing.
 
   Verify that it is skipped by default. Run it once with the user's approval and record the results in design.md.
-- [ ] 10.3 Run the full local gate: `zsh tests/run.zsh --lint && zsh tests/run.zsh && zsh tests/scenario-coverage.zsh && zsh tests/check-hygiene.zsh`. Verify that every spec scenario is covered and all checks pass.
+- [x] 10.3 Run the full local gate: `zsh tests/run.zsh --lint && zsh tests/run.zsh && zsh tests/scenario-coverage.zsh && zsh tests/check-hygiene.zsh`. Verify that every spec scenario is covered and all checks pass.
 - [ ] 10.4 After the user explicitly approves, create the public repository (`gh repo create MrBogomips/zsh-claude-oneshot --public`) and push. Verify that CI passes on Ubuntu, macOS and the minimum-zsh job.

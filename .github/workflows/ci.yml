@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install zsh
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y zsh
+
+      - name: Versions
+        run: |
+          zsh --version
+          jq --version
+
+      - name: Coexistence plugins (pinned)
+        run: zsh tests/fetch-deps.zsh
+
+      - name: Lint
+        run: zsh tests/run.zsh --lint
+
+      - name: Tests
+        run: zsh tests/run.zsh
+
+      - name: Hygiene
+        run: zsh tests/check-hygiene.zsh
+
+      - name: Scenario coverage
+        run: zsh tests/scenario-coverage.zsh
+
+  minimum-zsh:
+    # The tests run inside the zshusers/zsh:5.3.1 image. They are started with docker run
+    # rather than as a container job, because the image is too old for the Node runtime that
+    # actions/checkout needs inside a container. The image has no jq, so this job also covers
+    # the fallback without live progress.
+    name: test (zsh 5.3.1)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Coexistence plugins (pinned)
+        run: |
+          sudo apt-get update && sudo apt-get install -y zsh
+          zsh tests/fetch-deps.zsh
+
+      - name: Lint and tests in zsh 5.3.1
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src zshusers/zsh:5.3.1 \
+            sh -c 'zsh --version && zsh tests/run.zsh --lint && zsh tests/run.zsh'

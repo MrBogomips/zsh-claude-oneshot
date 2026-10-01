@@ -6,7 +6,8 @@
 #
 # Each test file runs in a fresh `zsh -f`, each test function in its own subshell, with a
 # temporary HOME and the Claude Code test double first on PATH. Output is TAP-style.
-# ZT_JOBS sets how many files run in parallel (default 4). Directories named `fixtures` or
+# ZT_JOBS sets how many files run in parallel (default 4); ZT_VERBOSE=1 shows the output of
+# passing tests too. Directories named `fixtures` or
 # `.deps` are skipped during discovery; pass a file or directory explicitly to include it.
 
 emulate zsh
@@ -96,8 +97,11 @@ zt_main() {
   path=( $ZT_TESTS/bin $path )
   export PATH
   zt_guard || return 2
+  # Each zsh then uses its own function library, not one inherited through an exported FPATH.
+  unset FPATH
 
-  export ZT_ROOT ZT_TESTS ZT_OUTER_HOME=$HOME
+  # The invoking user's HOME and CLAUDE_CONFIG_DIR, for the opt-in smoke test against the real CLI.
+  export ZT_ROOT ZT_TESTS ZT_OUTER_HOME=$HOME ZT_OUTER_CLAUDE_CONFIG_DIR=${CLAUDE_CONFIG_DIR:-}
   export ZT_UTF8_LOCALE=${ZT_UTF8_LOCALE:-$(zt_utf8_locale)}
 
   local work f line

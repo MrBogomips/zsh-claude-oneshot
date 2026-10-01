@@ -306,9 +306,24 @@ No maintained tool measures line coverage for zsh. Coverage is measured instead 
 - A `zshusers/zsh:5.3.1` container job for the minimum version. If jq cannot be installed there, that job exercises the fallback without jq.
 - Coexistence plugins cloned at pinned tags into `tests/.deps/`, which is gitignored.
 
+*Implementation notes (2026-10-01):*
+- The minimum-version job runs the `zshusers/zsh:5.3.1` image with `docker run` on an Ubuntu runner rather than as a `container:` job, because `actions/checkout` needs a Node runtime that the image is too old for.
+- The pinned tags are zsh-syntax-highlighting 0.8.0 and zsh-autosuggestions v0.7.1 (`tests/fetch-deps.zsh`).
+- The full suite was run locally on a zsh 5.3.1 built from source as well as on 5.9.
+- The runner unsets `FPATH`, so each zsh uses its own function library rather than one inherited from the environment.
+- On zsh 5.3, zsh-autosuggestions shows no suggestion next to zsh-syntax-highlighting even without this plugin. The coexistence tests therefore compare against a baseline run without zsh-claude-oneshot.
+
 **Smoke test.** `tests/smoke/real-claude.test.zsh` runs only with `ZCO_SMOKE=1` and is never run in CI. It covers two things:
 - Parse-time checks through `</dev/null` probes, with no API call: the hidden flags are still accepted, `--skill` is still unknown, and a missing agent is rejected.
 - A few haiku calls: the `--` separator with a variadic flag, `auto` and `plan` accepted, the stream-json field names, and start-up time.
+
+**Smoke test results, 2026-10-01 (task 10.2), Claude Code 2.1.286:** all seven checks passed.
+- `--system-prompt-file`, `--append-system-prompt-file` and `--max-turns` are still accepted; `--skill` is still unknown; a missing agent is rejected before any API call.
+- `zco haiku --add-dir /tmp -- '-v: …'` answers the prompt, so `--` still stops the variadic flag.
+- `auto` and `plan` are accepted.
+- The stream-json fields read by the jq filter are present: `assistant` events with `message.content[]` items of type `text` and `tool_use` (`name`, `input`), and a `result` event with `subtype`, `result`, `duration_ms`, `num_turns` and `total_cost_usd`. The stream also carries `system` hook events, `rate_limit_event` and `thinking` content items, which the filter ignores as designed.
+- Which tools exist depends on the user's Claude Code setup: in the tested setup `Glob` was not available, so the smoke test asks for any read-only tool call instead of a specific tool.
+- A trivial haiku prompt through `zco` took 2.9 to 3.0 s, in line with the 2.8 s measured earlier.
 
 ### 15. Repository hygiene
 - `.gitignore`: `.claude/`, `tests/.deps/`, `.DS_Store`. `.zco.config` is not ignored, because a project may choose to commit one.

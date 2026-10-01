@@ -301,6 +301,7 @@ zt_begin_test() {
   ZT_TMP=${ZT_TMP:A}
   local -a leak
   leak=( ${(k)parameters[(I)ZCO_*]} ${(k)parameters[(I)FAKE_CLAUDE_*]} )
+  leak=( ${leak:#ZCO_SMOKE} )   # gates the smoke test; the plugin never reads it
   (( $#leak )) && unset $leak
   unset NO_COLOR CLAUDE_CONFIG_DIR ANTHROPIC_DEFAULT_OPUS_MODEL
   export HOME=$ZT_TMP/home TMPDIR=$ZT_TMP/tmp FAKE_CLAUDE_LOG=$ZT_TMP/claude
