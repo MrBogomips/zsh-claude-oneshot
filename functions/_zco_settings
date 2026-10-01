@@ -1,0 +1,61 @@
+# _zco_settings MODEL: find and read the configuration files, then resolve every key for MODEL.
+#
+# Needs P (from _zco_parse) in scope. Fills the caller's
+#   S          effective values (lists: NUL-terminated entries; booleans: true or false)
+#   Ssrc       sources (lists: NUL-terminated, one per entry)
+#   Slayer     layers, as named by _zco_config_get
+#   zco_files  ( user-file project-file ), empty elements when absent
+# The text and file forms of each system prompt count as one setting: the higher layer wins,
+# and two non-empty forms in one layer are an error.
+# Returns 1 with the message in REPLY on any configuration error.
+
+emulate -L zsh
+[[ -n ${zk[keys]:-} ]] || { local -A zk; _zco_keys }
+
+local model=$1 key cv cl t f
+local -a cs
+local -A cfg cfg_src rank
+rank=( cli 1 env-model 2 env 2 project-model 3 project 4 user-model 5 user 6 default 7 )
+
+_zco_config_find || return 1
+zco_files=( "${reply[@]}" )
+if [[ -n $zco_files[1] ]]; then _zco_config_read $zco_files[1] user || return 1; fi
+if [[ -n $zco_files[2] ]]; then _zco_config_read $zco_files[2] project || return 1; fi
+
+for key in ${(s: :)zk[keys]}; do
+  _zco_config_get $key $model || return 1
+  S[$key]=$cv
+  Slayer[$key]=$cl
+  if [[ -n ${zk[list:$key]:-} ]]; then
+    Ssrc[$key]=${(pj:\0:)cs}$'\0'
+  else
+    Ssrc[$key]=$cs[1]
+  fi
+done
+
+for t in system_prompt append_system_prompt; do
+  f=${t}_file
+  if (( rank[$Slayer[$t]] == rank[$Slayer[$f]] )); then
+    [[ $Slayer[$t] == default ]] && continue
+    if [[ -n $S[$t] && -n $S[$f] ]]; then
+      case $Slayer[$t] in
+        (cli) REPLY="--${t//_/-} and --${f//_/-} cannot be used together" ;;
+        (env*) REPLY="$Ssrc[$t] and $Ssrc[$f] cannot both be set" ;;
+        (*) REPLY="$Ssrc[$t] and $Ssrc[$f]: $t and $f cannot both be set in one place" ;;
+      esac
+      return 1
+    fi
+    if [[ -n $S[$t] ]]; then
+      Ssrc[$f]="overridden by $t ($Ssrc[$t])"
+    elif [[ -n $S[$f] ]]; then
+      Ssrc[$t]="overridden by $f ($Ssrc[$f])"
+    fi
+  elif (( rank[$Slayer[$t]] < rank[$Slayer[$f]] )); then
+    S[$f]=
+    Ssrc[$f]="overridden by $t ($Ssrc[$t])"
+  else
+    S[$t]=
+    Ssrc[$t]="overridden by $f ($Ssrc[$f])"
+  fi
+done
+return 0

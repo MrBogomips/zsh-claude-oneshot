@@ -1,0 +1,42 @@
+# _zco_config_find: the configuration files that apply in the current directory.
+#
+# reply=( USER PROJECT ); an element is empty when there is no such file.
+#   USER     $ZCO_CONFIG, or else ~/.zco.config
+#   PROJECT  the nearest .zco.config in $PWD or a parent; neither the user file nor
+#            ~/.zco.config ever counts as a project file. None when ZCO_LOCAL_CONFIG is false.
+# Returns 1 with the message in REPLY when ZCO_LOCAL_CONFIG is not a boolean.
+
+emulate -L zsh
+
+local user=${ZCO_CONFIG:-$HOME/.zco.config} project= dir file user_real home_real
+reply=()
+[[ -e $user ]] || user=
+
+if (( ${+ZCO_LOCAL_CONFIG} )); then
+  if ! _zco_bool "$ZCO_LOCAL_CONFIG"; then
+    REPLY="ZCO_LOCAL_CONFIG: '$ZCO_LOCAL_CONFIG' is not a boolean (use true/false, yes/no, on/off or 1/0)"
+    return 1
+  fi
+  if [[ $REPLY == false ]]; then
+    reply=( "$user" '' )
+    return 0
+  fi
+fi
+
+[[ -n $user ]] && user_real=${user:A}
+[[ -e $HOME/.zco.config ]] && home_real=${${:-$HOME/.zco.config}:A}
+dir=$PWD
+while :; do
+  file=${dir%/}/.zco.config
+  if [[ -f $file ]]; then
+    if [[ ${file:A} != ${user_real:-//} && ${file:A} != ${home_real:-//} ]]; then
+      project=$file
+      break
+    fi
+  fi
+  [[ $dir == / ]] && break
+  dir=${dir:h}
+done
+
+reply=( "$user" "$project" )
+return 0

@@ -53,7 +53,7 @@
 
 ## 4. Configuration files
 
-- [ ] 4.1 Write tests for every configuration scenario, using fixture trees in the temp `HOME`: a user file, nested project files and prompt files. Add parser edge cases:
+- [x] 4.1 Write tests for every configuration scenario, using fixture trees in the temp `HOME`: a user file, nested project files and prompt files. Add parser edge cases:
   - a missing final newline;
   - `=` inside a value;
   - an empty value;
@@ -62,17 +62,17 @@
   - a section header with surrounding spaces.
 
   Verify that they fail.
-- [ ] 4.2 Implement `_zco_config_find`: `ZCO_CONFIG` or `~/.zco.config`, the walk up to the nearest project file (not counting the user file) and the `ZCO_LOCAL_CONFIG` switch. Verify that the discovery scenarios pass.
-- [ ] 4.3 Implement `_zco_config_read`:
+- [x] 4.2 Implement `_zco_config_find`: `ZCO_CONFIG` or `~/.zco.config`, the walk up to the nearest project file (not counting the user file) and the `ZCO_LOCAL_CONFIG` switch. Verify that the discovery scenarios pass.
+- [x] 4.3 Implement `_zco_config_read`:
   - the line loop with line numbers, sections, trimming and outer-quote removal, with nothing evaluated;
   - key and type validation against `_zco_keys`;
   - refusal of user-only keys and `bypassPermissions` in the project file;
   - relative-path resolution against the file's directory, and `~/` expansion.
 
   Verify that the format, validation, restricted-keys and relative-path scenarios pass, including "No evaluation".
-- [ ] 4.4 Implement `_zco_config_get`: the seven layers, `ZCO_<KEY>` and `ZCO_EFFORT_<MODEL>`, list replacement plus command-line append, and source tracking. Verify that the precedence, list-key, "Scalar key through the environment" and "Editing a file between runs" scenarios pass.
-- [ ] 4.5 Implement `_zco_config_show`. Its INI-style output carries `# source` comments and header comments naming the files found. Verify its output directly for the two "Showing the effective configuration" scenarios; the command-line wiring is task 5.7.
-- [ ] 4.6 Document `.zco.config` in the README:
+- [x] 4.4 Implement `_zco_config_get`: the seven layers, `ZCO_<KEY>` and `ZCO_EFFORT_<MODEL>`, list replacement plus command-line append, and source tracking. Verify that the precedence, list-key, "Scalar key through the environment" and "Editing a file between runs" scenarios pass.
+- [x] 4.5 Implement `_zco_config_show`. Its INI-style output carries `# source` comments and header comments naming the files found. Verify its output directly for the two "Showing the effective configuration" scenarios; the command-line wiring is task 5.7.
+- [x] 4.6 Document `.zco.config` in the README:
   - locations and format;
   - precedence;
   - the key table;

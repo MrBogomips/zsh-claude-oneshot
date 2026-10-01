@@ -38,3 +38,49 @@ test_each_grammar_example_has_a_parser_test() {
     assert_true "no parser test for README example: $ex" eval '(( ${calls[(Ie)$args]} ))'
   done
 }
+
+test_keys_table_matches_the_key_schema() {
+  zt_readme_section $ZT_README keys-table
+  assert_eq "$REPLY" "$(zt_readme_keys_table)" "README keys table is stale: run zsh tests/update-readme.zsh"
+}
+
+# The fenced block between two README markers, written to a file.
+zt_readme_example() {   # marker file
+  zt_readme_section $ZT_README $1
+  local -a lines
+  lines=( "${(@f)REPLY}" )
+  lines=( "${(@)lines:#\`\`\`*}" )
+  assert_ne $#lines 0 "README example $1 not found"
+  mkdir -p -- ${2:h}
+  print -rl -- "${lines[@]}" > $2
+}
+
+test_readme_example_user_file_parses() {
+  zt_readme_example example-user-config ~/.zco.config
+  zt_settings opus summarize
+  assert_eq $ZT_RC 0 "$REPLY"
+  assert_setting effort xhigh '~/.zco.config:7'
+  assert_setting permission_mode acceptEdits
+  assert_setting append_system_prompt_file "$HOME/.config/zco/house-style.md"
+  zt_settings haiku summarize
+  assert_setting max_budget_usd 0.10
+  assert_setting session_persistence false
+}
+
+test_readme_example_project_file_parses() {
+  zt_readme_example example-project-config ~/proj/.zco.config
+  cd ~/proj
+  zt_settings opus summarize
+  assert_eq $ZT_RC 0 "$REPLY"
+  assert_setting agent reviewer '~/proj/.zco.config:2'
+  zt_list "$S[add_dir]"; assert_eq "${(j:|:)reply}" "$HOME/shared-lib"
+  zt_list "$S[allowed_tools]"; assert_eq "${(j:|:)reply}" 'Bash(git *)|Edit'
+}
+
+test_readme_format_example_parses() {
+  zt_readme_example example-format-config ~/.zco.config
+  zt_settings opus summarize
+  assert_eq $ZT_RC 0 "$REPLY"
+  assert_setting effort xhigh
+  assert_setting append_system_prompt 'Use # for headings. '
+}

@@ -1,0 +1,104 @@
+# _zco_config_get KEY MODEL: the effective value of one configuration key.
+#
+# Precedence, highest first: command line, environment (ZCO_EFFORT_<MODEL> above ZCO_EFFORT),
+# project file [MODEL] section, project file, user file [MODEL] section, user file, built-in.
+# Sets the caller's
+#   cv  the value (lists: NUL-terminated entries)
+#   cl  the layer it came from: cli env-model env project-model project user-model user default
+#   cs  array of sources: "command line", a variable name, "file:line" or "built-in"
+#       (lists: one source per entry, or one source for an empty list)
+# A list takes the highest file layer that sets it; command-line entries are appended.
+# Needs cfg and cfg_src (from _zco_config_read) and P (from _zco_parse) in scope.
+# Returns 1 with the message in REPLY when a variable or command-line value is invalid.
+
+emulate -L zsh
+setopt extended_glob
+[[ -n ${zk[keys]:-} ]] || { local -A zk; _zco_keys }
+
+local key=$1 model=$2 slot layer var value
+local -a order cli
+order=(
+  "project|>$model|$key" project-model
+  "project||$key"        project
+  "user|>$model|$key"    user-model
+  "user||$key"           user
+)
+cv= cl= cs=()
+
+if [[ -n ${zk[list:$key]:-} ]]; then
+  cl=default
+  cs=( built-in )
+  for slot layer in $order; do
+    if (( ${+cfg[$slot]} )); then
+      cv=${cfg[$slot]}
+      cl=$layer
+      cs=( ${(0)cfg_src[$slot]} )
+      break
+    fi
+  done
+  cli=( ${(0)P[$key]:-} )
+  if (( $#cli )); then
+    [[ -z $cv ]] && cs=()
+    cv+=${P[$key]}
+    repeat $#cli cs+=( 'command line' )
+    [[ $cl == default ]] && cl=cli
+  fi
+  return 0
+fi
+
+# Command line.
+value=
+if [[ $key == permission_mode && -n ${P[dry_run]:-} ]]; then
+  value=plan
+elif [[ $key == mcp && -n ${P[mcp]:-} ]]; then
+  value=true
+elif [[ $key == raw_line && -n ${P[line_mode]:-} ]]; then
+  value=${P[line_mode]}
+elif [[ $key != (mcp|raw_line) && -n ${P[$key]+set} ]]; then
+  value=${P[$key]}
+  if ! _zco_check ${zk[type:$key]} "$value"; then
+    REPLY="--${key//_/-}: $REPLY"
+    return 1
+  fi
+  value=$REPLY
+fi
+if [[ -n $value ]]; then
+  cv=$value cl=cli cs=( 'command line' )
+  return 0
+fi
+
+# Environment.
+local -a vars
+if [[ $key == effort ]]; then
+  vars=( "ZCO_EFFORT_${${(U)model}//[^A-Z0-9_]/_}" ZCO_EFFORT )
+elif [[ -n ${zk[env:$key]} ]]; then
+  vars=( ${zk[env:$key]} )
+fi
+for var in $vars; do
+  (( ${+parameters[$var]} )) || continue
+  if [[ ${parameters[$var]} == array* ]]; then
+    value=${(j: :)${(@q-)${(P@)var}}}
+  else
+    value=${(P)var}
+  fi
+  if [[ -n $value && ${zk[type:$key]} != rawline ]]; then
+    if ! _zco_check ${zk[type:$key]} "$value"; then
+      REPLY="$var: $REPLY"
+      return 1
+    fi
+    value=$REPLY
+  fi
+  cv=$value cs=( $var )
+  if [[ $var == ZCO_EFFORT_* ]]; then cl=env-model; else cl=env; fi
+  return 0
+done
+
+# Files, then the built-in default.
+for slot layer in $order; do
+  if (( ${+cfg[$slot]} )); then
+    cv=${cfg[$slot]} cl=$layer cs=( ${cfg_src[$slot]} )
+    return 0
+  fi
+done
+cv=${zk[default:$key]} cl=default cs=( built-in )
+return 0

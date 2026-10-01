@@ -1,0 +1,107 @@
+# _zco_config_read [-l] FILE LAYER: parse one configuration file into the caller's cfg and cfg_src.
+#
+# Entries land in cfg["LAYER|SECTION|KEY"]: SECTION is empty outside sections and ">name" inside
+# a [name] section. Scalars hold the value, lists hold NUL-terminated entries (an empty value
+# clears the list). cfg_src holds "file:line" for scalars and NUL-terminated "file:line" entries
+# for lists. LAYER is user or project; a project file may not set user-only keys.
+#
+# Nothing in the file is evaluated. Lines are `key = value`; blank lines and lines starting with
+# # or ; are ignored; one pair of matching quotes around the whole value is removed; a relative
+# path resolves against the file's directory and a leading ~/ against $HOME.
+#
+#   -l  load time: read only models, prefix and raw_line outside sections, report nothing.
+# Returns 1 with "file:line: message" in REPLY on the first problem.
+
+emulate -L zsh
+setopt extended_glob
+[[ -n ${zk[keys]:-} ]] || { local -A zk; _zco_keys }
+
+integer load=0 n=0
+[[ $1 == -l ]] && { load=1; shift }
+local file=$1 layer=$2
+local shown=${(D)file} dir=${file:A:h}
+local line key value section= slot src type
+
+if [[ ! -r $file || -d $file ]]; then
+  (( load )) && return 0
+  REPLY="$shown: cannot read the configuration file"
+  return 1
+fi
+
+while IFS= read -r line || [[ -n $line ]]; do
+  n+=1
+  src=${shown}:$n
+  line=${line%$'\r'}
+  line=${${line##[[:space:]]##}%%[[:space:]]##}
+  [[ -z $line || $line == [\#\;]* ]] && continue
+
+  if [[ $line == \[*\] ]]; then
+    section=">${${line[2,-2]##[[:space:]]##}%%[[:space:]]##}"
+    continue
+  fi
+  if [[ $line != [^=]##=* ]]; then
+    (( load )) && continue
+    REPLY="$src: malformed line (expected key = value)"
+    return 1
+  fi
+
+  key=${${line%%=*}%%[[:space:]]##}
+  value=${${line#*=}##[[:space:]]##}
+  if (( $#value >= 2 )) && [[ $value == \"*\" || $value == \'*\' ]] && [[ $value[1] == $value[-1] ]]; then
+    value=${value[2,-2]}
+  fi
+  type=${zk[type:$key]:-}
+
+  if (( load )); then
+    [[ -z $section && -n ${zk[load:$key]:-} ]] || continue
+  else
+    if [[ -z $type ]]; then
+      REPLY="$src: unknown key '$key'"
+      return 1
+    fi
+    if [[ $layer == project && -n ${zk[user:$key]:-} ]]; then
+      REPLY="$src: $key is only allowed in the user file (~/.zco.config or \$ZCO_CONFIG)"
+      return 1
+    fi
+    if [[ $layer == project && $key == permission_mode && $value == bypassPermissions ]]; then
+      REPLY="$src: permission_mode = bypassPermissions is only allowed in the user file"
+      return 1
+    fi
+    if [[ -n $section && -n ${zk[load:$key]:-} ]]; then
+      REPLY="$src: $key cannot be set inside a [model] section"
+      return 1
+    fi
+    if [[ -n $value ]]; then
+      if ! _zco_check $type $value; then
+        REPLY="$src: $key: $REPLY"
+        return 1
+      fi
+      value=$REPLY
+    fi
+  fi
+
+  if [[ -n $value && -n ${zk[path:$key]:-} ]]; then
+    case $value in
+      ('{'*) ;;                                   # JSON for settings
+      ('~/'*) value=$HOME/${value#\~/} ;;
+      (/*) ;;
+      (*) value=${${:-$dir/$value}:a} ;;
+    esac
+  fi
+
+  slot="$layer|$section|$key"
+  if [[ -n ${zk[list:$key]:-} ]]; then
+    if [[ -z $value ]]; then
+      cfg[$slot]=
+      cfg_src[$slot]=$src$'\0'
+    else
+      [[ -n ${cfg[$slot]:-} ]] || cfg_src[$slot]=
+      cfg[$slot]+=$value$'\0'
+      cfg_src[$slot]+=$src$'\0'
+    fi
+  else
+    cfg[$slot]=$value
+    cfg_src[$slot]=$src
+  fi
+done < $file
+return 0

@@ -200,6 +200,29 @@ zt_parse() {
 # Elements of a parsed or configured list value (NUL-terminated entries), in $reply.
 zt_list() { reply=( ${(0)1} ) }
 
+# Parse ARG..., then find, read and resolve the configuration for MODEL with _zco_settings.
+# Results: globals P, S (values), Ssrc (sources), Slayer (layers), zco_files (user, project);
+# status in ZT_RC, message in REPLY.
+zt_settings() {   # model arg...
+  typeset -gA P S Ssrc Slayer
+  typeset -ga zco_files
+  P=() S=() Ssrc=() Slayer=() zco_files=()
+  local -A zk
+  _zco_keys
+  if ! _zco_parse "${@:2}"; then
+    ZT_RC=2
+    return 0
+  fi
+  _zco_settings $1
+  ZT_RC=$?
+  return 0
+}
+
+assert_setting() {   # key value [source]
+  assert_eq "${S[$1]-<unset>}" "$2" "value of $1"
+  (( $# < 3 )) || assert_eq "${Ssrc[$1]-<unset>}" "$3" "source of $1"
+}
+
 zt_mkdir_cd() { mkdir -p -- $1 && cd -- $1 }
 
 # ---------------------------------------------------------------- per-test environment

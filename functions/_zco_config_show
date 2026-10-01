@@ -1,0 +1,52 @@
+# _zco_config_show NAME MODEL: print the effective configuration (--show-config) on stdout.
+#
+# Uses S, Ssrc and zco_files from _zco_settings. Prints one `key = value` line per setting, in
+# schema order, each preceded by a comment naming its source, so the output can be pasted into a
+# configuration file as it is. List keys get one line per entry.
+
+emulate -L zsh
+setopt extended_glob
+
+local name=$1 model=$2 key value i note
+local -a vals srcs
+local -A zk
+_zco_keys
+
+_zco_config_show_value() {
+  value=$1
+  if [[ $value == *$'\n'* ]]; then
+    value=${(V)value}
+  fi
+  if [[ $value == ([[:space:]]*|*[[:space:]]|\"*\"|\'*\') ]]; then
+    value="\"$value\""
+  fi
+  REPLY=${value:+ $value}
+}
+
+print -r -- "# Effective configuration of $name (model $model)."
+print -r -- "# Each setting follows a comment naming where it comes from."
+print -r -- "# user file:    ${${zco_files[1]:+${(D)zco_files[1]}}:-none}"
+print -r -- "# project file: ${${zco_files[2]:+${(D)zco_files[2]}}:-none}"
+for key in ${(s: :)zk[keys]}; do
+  note=
+  [[ $key == effort && -n $S[effort] && ${(L)model} == *haiku* ]] && note=' (not passed: haiku models take no effort)'
+  if [[ -n ${zk[list:$key]:-} ]]; then
+    vals=( ${(0)S[$key]} )
+    srcs=( ${(0)Ssrc[$key]} )
+    if (( ! $#vals )); then
+      print -r -- "# ${srcs[1]:-built-in}"
+      print -r -- "$key ="
+    fi
+    for (( i = 1; i <= $#vals; i++ )); do
+      _zco_config_show_value $vals[i]
+      print -r -- "# ${srcs[i]:-built-in}"
+      print -r -- "$key =$REPLY"
+    done
+  else
+    _zco_config_show_value $S[$key]
+    print -r -- "# ${Ssrc[$key]:-built-in}$note"
+    print -r -- "$key =$REPLY"
+  fi
+done
+unfunction _zco_config_show_value
+return 0

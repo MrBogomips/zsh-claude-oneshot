@@ -1,0 +1,10 @@
+# _zco_bool VALUE: REPLY=true or false for 1/true/yes/on and 0/false/no/off (any case).
+# Returns 1, with REPLY empty, for anything else.
+
+emulate -L zsh
+case ${(L)1} in
+  (1|true|yes|on) REPLY=true ;;
+  (0|false|no|off) REPLY=false ;;
+  (*) REPLY=; return 1 ;;
+esac
+return 0
