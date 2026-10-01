@@ -1,0 +1,17 @@
+# _zco_line_finish: line-finish hook (registered with add-zle-hook-widget).
+#
+# When an accepted line starts with a per-model command, quote its prompt part before zsh parses
+# it, so the line that runs and is saved in history is the rewritten one. Continuation lines and
+# vared ($CONTEXT other than start) are left alone. The default line mode is read for every line
+# (see _zco_raw_mode). Marks that it ran, for the self-heal in _zco_preexec.
+
+emulate -L zsh
+setopt extended_glob
+
+typeset -g _zco_hook_ran=1
+[[ $CONTEXT == start ]] || return 0
+local first=${${BUFFER##[[:space:]]##}%%[[:space:]]*}
+[[ $first == [A-Za-z0-9._-]## && -n ${_zco_cmds[$first]+set} ]] || return 0
+_zco_raw_mode
+_zco_rewrite "$BUFFER" $REPLY && BUFFER=$REPLY
+return 0

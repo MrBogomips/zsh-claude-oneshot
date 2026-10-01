@@ -179,3 +179,23 @@ test_readme_intro_header_and_progress_lines_match_the_formats() {
   local readme=$(<$ZT_README)
   assert_contains "$readme" $'opus · xhigh · auto · ~/proj\n→ Bash  git status --short\n→ Bash  git diff --stat'
 }
+
+test_each_rewrite_example_matches_the_rewrite_and_has_a_test() {
+  typeset -gA _zco_cmds
+  _zco_cmds=( opus opus sonnet sonnet haiku haiku )
+  zt_readme_section $ZT_README rewrite-examples
+  local -a lines
+  lines=( "${(@f)REPLY}" )
+  lines=( "${(@)lines:#\`\`\`*}" )
+  assert_ne $#lines 0
+  local tests typed expected
+  tests=$(<$ZT_TESTS/unit/rewrite.test.zsh)$(<$ZT_TESTS/rawline/typed.test.zsh)
+  integer i
+  for (( i = 1; i < $#lines; i += 2 )); do
+    typed=$lines[i] expected=${lines[i+1]#  → }
+    [[ $expected == '(unchanged)' ]] && expected=$typed
+    _zco_rewrite "$typed" literal
+    assert_eq "$REPLY" "$expected" "README rewrite example: $typed"
+    assert_contains "$tests" "$typed" "README example without a rewrite test: $typed"
+  done
+}

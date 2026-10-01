@@ -5,22 +5,25 @@
 #                                  the output in between is in $ZT_PTY_OUT (cleaned)
 #                                  and $ZT_PTY_RAW (with escape sequences)
 #   zt_pty_send TEXT               send raw keys without Enter
-#   zt_pty_wait [TIMEOUT]          wait for the next prompt; output in $ZT_PTY_OUT
+#   zt_pty_wait [TIMEOUT] [MARKER] wait for the next prompt (or MARKER); output in $ZT_PTY_OUT
+#   zt_pty_keys KEYS [MARKER]      send raw keys, then wait for the prompt (or MARKER)
 #   zt_pty_stop                    end the shell
 #
-# The shell runs with ZDOTDIR=$ZT_TMP/zdotdir, no global rc files, TERM=dumb, and the prompt
-# set to a marker so the end of each command can be detected.
+# The shell runs with ZDOTDIR=$ZT_TMP/zdotdir, no global rc files and TERM=dumb.
 
 zmodload zsh/zpty zsh/zselect zsh/datetime
 
-typeset -g ZT_PTY_MARK='<ZT-PROMPT>'
+# The end of a command is marked by a precmd hook, which runs once per new prompt; the prompt
+# itself is not used, because line-editor plugins redraw it.
+typeset -g ZT_PTY_MARK='<ZT-READY>'
 typeset -g ZT_PTY_BUF= ZT_PTY_OUT= ZT_PTY_RAW=
 
 zt_pty_start() {
   local zdot=$ZT_TMP/zdotdir
   mkdir -p -- $zdot
   {
-    print -r -- "PS1='$ZT_PTY_MARK'; PS2='<ZT-CONT>'; RPS1=''"
+    print -r -- "PS1='<ZT-PROMPT>'; PS2='<ZT-CONT>'; RPS1=''"
+    print -r -- "zt_ready() { print -rn -- '$ZT_PTY_MARK' }; precmd_functions+=( zt_ready )"
     print -r -- "unset zle_bracketed_paste; unsetopt prompt_sp; PROMPT_EOL_MARK=''"
     print -r -- "HISTFILE=${(q)ZT_TMP}/history; HISTSIZE=200; SAVEHIST=200"
     print -rl -- "$@"
@@ -40,11 +43,11 @@ zt_pty_clean() {
   REPLY=$s
 }
 
-zt_pty_wait() {   # [timeout seconds]
+zt_pty_wait() {   # [timeout seconds] [marker]: wait for the marker (default: the prompt)
   setopt local_options extended_glob
-  local chunk
+  local chunk mark=${2:-$ZT_PTY_MARK}
   typeset -F deadline=$(( EPOCHREALTIME + ${1:-10} ))
-  while [[ $ZT_PTY_BUF != *"$ZT_PTY_MARK"* ]]; do
+  while [[ $ZT_PTY_BUF != *"$mark"* ]]; do
     if zpty -rt ZT chunk 2>/dev/null; then
       ZT_PTY_BUF+=$chunk
       continue
@@ -52,11 +55,17 @@ zt_pty_wait() {   # [timeout seconds]
     (( EPOCHREALTIME > deadline )) && { zt_pty_clean "$ZT_PTY_BUF"; ZT_PTY_OUT=$REPLY; return 1 }
     zselect -t 2
   done
-  ZT_PTY_RAW=${ZT_PTY_BUF%%"$ZT_PTY_MARK"*}
+  ZT_PTY_RAW=${ZT_PTY_BUF%%"$mark"*}
   zt_pty_clean "$ZT_PTY_RAW"
   ZT_PTY_OUT=$REPLY
-  ZT_PTY_BUF=${ZT_PTY_BUF#*"$ZT_PTY_MARK"}
+  ZT_PTY_BUF=${ZT_PTY_BUF#*"$mark"}
   return 0
+}
+
+# Send raw keys, then wait for MARKER (default: the prompt). Output in $ZT_PTY_OUT.
+zt_pty_keys() {   # keys [marker] [timeout]
+  zpty -w -n ZT "$1"
+  zt_pty_wait ${3:-10} "${2:-$ZT_PTY_MARK}" || zt_fail "zpty: no ${(qqqq)${2:-prompt}} after sending ${(qqqq)1}" "  output: ${(qqqq)ZT_PTY_OUT}"
 }
 
 zt_pty_send() { zpty -w -n ZT "$1" }

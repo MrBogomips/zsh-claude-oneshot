@@ -166,7 +166,7 @@
 
 ## 8. Raw-line capture
 
-- [ ] 8.1 Write unit tests for `_zco_rewrite` in all three modes. Cover every raw-line-capture scenario that rewrites or leaves a line alone, including "Quoted option value before an unquoted prompt" and the "Shell mode" scenarios. Add these edge cases:
+- [x] 8.1 Write unit tests for `_zco_rewrite` in all three modes. Cover every raw-line-capture scenario that rewrites or leaves a line alone, including "Quoted option value before an unquoted prompt" and the "Shell mode" scenarios. Add these edge cases:
   - tabs and trailing spaces;
   - `$'…'` input;
   - value options followed by an unsafe or unterminated-quote value;
@@ -184,21 +184,21 @@
   - `--shell` followed by `--literal`, and the reverse order.
 
   Add an idempotence property: rewriting the rewrite leaves it unchanged, in every mode. Verify that they fail.
-- [ ] 8.2 Implement `_zco_rewrite` with the `${(z)}` word walk, raw offsets, mode selection and the shell-mode split scan from design Decision 11. Verify that its unit tests pass.
-- [ ] 8.3 Implement `_zco_line_finish` and its registration: `add-zle-hook-widget line-finish` whenever at least one command is defined, the `CONTEXT` guard, and the default mode from `ZCO_RAW_LINE`, the cached user-file `raw_line` or `literal`. An invalid value triggers the load-time warning. Verify end to end through `zpty` that these scenarios pass:
+- [x] 8.2 Implement `_zco_rewrite` with the `${(z)}` word walk, raw offsets, mode selection and the shell-mode split scan from design Decision 11. Verify that its unit tests pass.
+- [x] 8.3 Implement `_zco_line_finish` and its registration: `add-zle-hook-widget line-finish` whenever at least one command is defined, the `CONTEXT` guard, and the default mode from `ZCO_RAW_LINE`, the cached user-file `raw_line` or `literal`. An invalid value triggers the load-time warning. Verify end to end through `zpty` that these scenarios pass:
   - apostrophe and redirection, separators, expansion characters, multi-line prompt and quoted option value;
   - history form and continuation line;
   - every "Line modes" scenario;
   - piping, redirecting and chaining in shell mode.
 
   Each test asserts the argv recorded by the double, the content received by the pipe or file, and that no stray files appear.
-- [ ] 8.4 Implement the `preexec` self-heal. Verify the "Widget replaced later" scenario through `zpty`, including that the replacing widget still runs.
-- [ ] 8.5 Add the coexistence tests:
+- [x] 8.4 Implement the `preexec` self-heal. Verify the "Widget replaced later" scenario through `zpty`, including that the replacing widget still runs.
+- [x] 8.5 Add the coexistence tests:
   - an oh-my-zsh-style `zle-line-finish` defined before loading;
   - zsh-syntax-highlighting and zsh-autosuggestions at pinned tags, loaded before and after the plugin.
 
   Verify that all orders pass, and that the tests skip with a notice when `tests/.deps/` is absent.
-- [ ] 8.6 Document raw-line capture in the README:
+- [x] 8.6 Document raw-line capture in the README:
   - what gets quoted, and that option values keep normal shell quoting;
   - when lines are left alone, and the form stored in history;
   - that `$VAR`, `$(…)` and `>` become prompt text in literal mode;

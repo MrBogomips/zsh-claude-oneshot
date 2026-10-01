@@ -1,0 +1,15 @@
+# _zco_preexec: preexec hook that keeps the line rewrite installed.
+#
+# _zco_line_finish marks every line it sees. If a line reaches preexec unmarked, another plugin
+# has replaced the zle-line-finish widget since we registered. Registering again makes
+# add-zle-hook-widget keep that widget as hook 0 and put its dispatcher back, so both run from the
+# next line on. Removing the hook first matters: add-zle-hook-widget does nothing for a hook it
+# already lists, which would leave the replacing widget unhooked.
+
+emulate -L zsh
+
+if (( ! ${_zco_hook_ran:-1} )) && (( ${#_zco_cmds} )); then
+  add-zle-hook-widget -d line-finish _zco_line_finish
+  add-zle-hook-widget line-finish _zco_line_finish
+fi
+typeset -g _zco_hook_ran=0

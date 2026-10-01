@@ -48,5 +48,17 @@
   fi
 
   _zco_define "$prefix" "${models[@]}"
+
+  # Interactive shells: the raw-line rewrite, whenever at least one per-model command exists.
+  if [[ -o interactive ]]; then
+    autoload -Uz add-zle-hook-widget add-zsh-hook
+    if (( ${#_zco_cmds} )); then
+      add-zle-hook-widget line-finish _zco_line_finish
+      add-zsh-hook preexec _zco_preexec
+    elif (( ${+widgets[_zco_line_finish]} )); then
+      add-zle-hook-widget -d line-finish _zco_line_finish
+      add-zsh-hook -d preexec _zco_preexec
+    fi
+  fi
   return 0
 } "$0"

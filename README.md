@@ -594,7 +594,101 @@ and `...` replace ` · `, `→` and `…`.
 
 ## Typing prompts without quotes
 
-A line that starts with a model command has its prompt quoted before zsh reads it.
+In an interactive shell, a line that starts with a model command has its prompt part quoted
+before zsh parses it. Apostrophes, `>`, `|`, `;`, `&`, `#`, `!`, `$`, `*` and `?` all stay part of
+the prompt, and zsh never waits for a closing quote. The rewritten line is what zsh shows, runs
+and saves in history:
+
+<!-- rewrite-examples:start -->
+```text
+opus xhigh don't touch tests > seriously
+  → opus xhigh 'don'\''t touch tests > seriously'
+sonnet edit README.md; then commit & push | done
+  → sonnet 'edit README.md; then commit & push | done'
+opus -a reviewer --system-prompt 'Be terse.' don't touch tests
+  → opus -a reviewer --system-prompt 'Be terse.' 'don'\''t touch tests'
+opus commit local changes
+  → (unchanged)
+opus "fix the bug"
+  → (unchanged)
+opus --shell write a commit message, don't list tests | pbcopy
+  → opus --shell 'write a commit message, don'\''t list tests' | pbcopy
+opus --shell count lines matching 'a | b' | wc -l
+  → opus --shell 'count lines matching '\''a | b'\''' | wc -l
+opus --shell explain the <div> tag in README.md; be brief | less
+  → opus --shell 'explain the <div> tag in README.md; be brief' | less
+opus --shell --literal is a > b true
+  → opus --shell --literal 'is a > b true'
+```
+<!-- rewrite-examples:end -->
+
+### What gets quoted
+
+The effort word, the options and `--` before the prompt stay as typed; the rewrite finds the
+start of the prompt with the same rules as the command itself. Option values keep their normal
+shell meaning, so quote them as usual when they need it (`--system-prompt 'Be terse.'`); the
+value is not part of the prompt.
+
+A line is left exactly as typed when its prompt part holds only letters, digits, spaces and
+`, . _ : / @ % + -`, or when it already is one quoted word, as in `opus "fix the bug"`. That also
+makes the rewrite idempotent: a rewritten line recalled from history runs unchanged.
+
+These lines are never rewritten: lines that do not start with a per-model command (such as
+`git diff | haiku …`, `zco opus … > out.md`, `{ opus … } > out.md`, `FOO=1 opus …` or
+`\opus …`), lines typed at a continuation prompt, and input read with `vared`.
+
+### Literal mode: the rest of the line is the prompt
+
+By default, everything after the options is prompt text. `$VAR`, `$(…)`, backticks, `>` and `|`
+are not expanded or acted on; they reach Claude Code as you typed them. So
+`opus write a commit message | pbcopy` sends `| pbcopy` as part of the prompt.
+
+### Shell mode: pipes and redirections on one line
+
+`--shell` ends the prompt at the first shell operator written as a separate word, and leaves
+that operator and the rest of the line to zsh:
+
+```zsh
+opus --shell write a commit message, don't list tests | pbcopy
+opus --shell summarize this repo > notes.md
+haiku -n --shell reorg this folder by year && ls
+```
+
+The operators are `|` `|&` `||` `&&` `;` `&` `>` `>>` `>|` `&>` `&>>` `2>` `2>>` `2>&1` `<`,
+and only with spaces around them (or at the end of the line). Operators attached to other text,
+like `README.md;`, `<div>` or `a>b`, stay prompt text. A phrase in quotes, starting at a word that
+begins with `'` or `"` and ending at the next word that ends with the same quote, is skipped,
+so `'a | b'` stays in the prompt, quotes included. An apostrophe inside a word, as in `don't`,
+does not start a phrase. The line you see after Enter shows exactly where the prompt ended.
+
+### Choosing the mode
+
+`--literal` and `--shell`, long options only, choose the mode for one line; the last one before
+the prompt wins. They are accepted, and ignored, when the command runs. The default comes from
+`raw_line` in `~/.zco.config`, or `ZCO_RAW_LINE`, which is read for every line:
+
+- `literal` (default; `on`, `1`, `true` and `yes` mean the same),
+- `shell`,
+- `off` (`0`, `false` and `no`): lines are left alone unless they carry `--literal` or `--shell`.
+
+With `off`, zsh parses the line as usual: an apostrophe leaves zsh waiting for the closing
+quote. Globs are still safe: `?`, `*` and `[` reach Claude Code literally in every mode, because
+the commands are `noglob` aliases.
+
+### Other ways around
+
+- `zco opus '…' > file` follows normal shell rules, so quote the prompt yourself.
+- `{ opus … } > file` is not rewritten either, because the line starts with `{`.
+- Pipe input into the command instead: `git diff | haiku summarize for a changelog`.
+
+### Load order
+
+The rewrite is a `zle-line-finish` hook added with `add-zle-hook-widget`, so it works with
+zsh-syntax-highlighting, zsh-autosuggestions and an existing `zle-line-finish` widget (such as
+oh-my-zsh's) whichever loads first. If a plugin loaded later replaces the `zle-line-finish`
+widget outright, the rewrite notices on the next command line and puts itself back from the
+following prompt on, without disabling that widget. Loading zsh-claude-oneshot before
+zsh-syntax-highlighting, which usually comes last, is a good default.
 
 ## Completion
 
