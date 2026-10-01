@@ -73,8 +73,13 @@ zt_pty_send() { zpty -w -n ZT "$1" }
 zt_pty_run() {   # line [timeout]
   zpty -w -n ZT "$1"$'\r'
   zt_pty_wait ${2:-10} || zt_fail "zpty: no prompt after typing ${(qqqq)1}" "  output: ${(qqqq)ZT_PTY_OUT}"
-  # Drop the echo of the typed line itself.
-  ZT_PTY_OUT=${ZT_PTY_OUT#*$'\n'}
+  # Drop everything up to the end of the echo of the typed line: the line holding the prompt.
+  # (A slow terminal can put other output, such as a blank line, before it.)
+  if [[ $ZT_PTY_OUT == *'<ZT-PROMPT>'*$'\n'* ]]; then
+    ZT_PTY_OUT=${ZT_PTY_OUT#*'<ZT-PROMPT>'*$'\n'}
+  else
+    ZT_PTY_OUT=${ZT_PTY_OUT#*$'\n'}
+  fi
 }
 
 zt_pty_stop() { zpty -d ZT 2>/dev/null; return 0 }
