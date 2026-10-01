@@ -299,7 +299,7 @@ It is registered for `zco`, for `_zco_main` (seen when `COMPLETE_ALIASES` is off
 ### 14. Coverage stand-in, lint and CI
 No maintained tool measures line coverage for zsh. Coverage is measured instead as **spec-scenario coverage**. Each test carries `# @scenario <capability>: <Scenario name>`, and `tests/scenario-coverage.zsh` fails when any `#### Scenario:` has no test. The target is 100%.
 
-`tests/run.zsh --lint` runs `zsh -n` on every zsh file. A hygiene check scans tracked files and fails on absolute home paths and on AI attribution trailers or "generated with" notes. Lines that only describe these patterns carry an allow-marker.
+`tests/run.zsh --lint` runs `zsh -n` on every zsh file. A hygiene check scans tracked files and fails on absolute home paths and on AI attribution trailers or "generated with" notes. Lines that only describe these patterns carry an allow-marker. <!-- hygiene: allow -->
 
 **CI** (`.github/workflows/ci.yml`) has:
 - An `ubuntu-latest` and `macos-latest` matrix running lint, the full suite, hygiene and scenario coverage.

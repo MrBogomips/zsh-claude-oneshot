@@ -10,17 +10,17 @@
 
 ## 2. Test harness
 
-- [ ] 2.1 Write `tests/lib/harness.zsh` and `tests/run.zsh`.
+- [x] 2.1 Write `tests/lib/harness.zsh` and `tests/run.zsh`.
   - The harness provides the assertions `assert_eq`/`assert_argv`/`assert_contains`/`assert_status`, temp dirs, a temp `HOME` and `PATH` set-up, and plugin loading.
   - The runner discovers `**/*.test.zsh`, runs one `zsh -f` per file and one subshell per test, prints TAP-style output and sets the exit status.
 
   Verify with `tests/self/harness.test.zsh`: running the runner on a fixture directory with one passing and one failing test reports both, and the runner exits 1. Also verify that a `~/.zco.config` in the real home is never read.
-- [ ] 2.2 Write the Claude Code test double `tests/bin/claude`. It records argv NUL-separated, the stdin content, the stdin kind and selected environment variables. It prints `$FAKE_CLAUDE_ANSWER`, or replays `$FAKE_CLAUDE_STREAM` when asked for `stream-json`, and exits with `$FAKE_CLAUDE_EXIT`. Verify with `tests/self/fake-claude.test.zsh` that arguments containing spaces and newlines are recorded exactly and that `pipe`, `file` and `chardev` stdin are told apart.
-- [ ] 2.3 Add the harness guard that aborts the run when `whence -p claude` is not the test double. Verify by putting another `claude` first on `PATH` and checking that the runner aborts before any test runs.
-- [ ] 2.4 Write `tests/lib/pty.zsh`. It starts `zsh -i` under `zpty` with a test `ZDOTDIR`, types a line, waits for a marker and returns the output. Verify with a self-test that typing `print -r -- ok` returns `ok`.
-- [ ] 2.5 Add `tests/run.zsh --lint`, which runs `zsh -n` on every zsh file. Verify that it fails on a fixture with a syntax error and passes on the repository.
-- [ ] 2.6 Write `tests/scenario-coverage.zsh`. It matches `# @scenario <capability>: <name>` tags against the `#### Scenario:` headings in the change specs and main specs. Verify that it names an untagged scenario from a fixture spec and exits non-zero.
-- [ ] 2.7 Write `tests/check-hygiene.zsh`. It fails on absolute home paths (`/Users/`, `/home/`), on AI attribution trailers and on "generated with" notes in tracked files. It skips lines that only describe its own patterns, using an explicit allow-marker. Verify that it flags a fixture line and passes on the repository.
+- [x] 2.2 Write the Claude Code test double `tests/bin/claude`. It records argv NUL-separated, the stdin content, the stdin kind and selected environment variables. It prints `$FAKE_CLAUDE_ANSWER`, or replays `$FAKE_CLAUDE_STREAM` when asked for `stream-json`, and exits with `$FAKE_CLAUDE_EXIT`. Verify with `tests/self/fake-claude.test.zsh` that arguments containing spaces and newlines are recorded exactly and that `pipe`, `file` and `chardev` stdin are told apart.
+- [x] 2.3 Add the harness guard that aborts the run when `whence -p claude` is not the test double. Verify by putting another `claude` first on `PATH` and checking that the runner aborts before any test runs.
+- [x] 2.4 Write `tests/lib/pty.zsh`. It starts `zsh -i` under `zpty` with a test `ZDOTDIR`, types a line, waits for a marker and returns the output. Verify with a self-test that typing `print -r -- ok` returns `ok`.
+- [x] 2.5 Add `tests/run.zsh --lint`, which runs `zsh -n` on every zsh file. Verify that it fails on a fixture with a syntax error and passes on the repository.
+- [x] 2.6 Write `tests/scenario-coverage.zsh`. It matches `# @scenario <capability>: <name>` tags against the `#### Scenario:` headings in the change specs and main specs. Verify that it names an untagged scenario from a fixture spec and exits non-zero.
+- [x] 2.7 Write `tests/check-hygiene.zsh`. It fails on absolute home paths (`/Users/`, `/home/`), on AI attribution trailers and on "generated with" notes in tracked files. It skips lines that only describe its own patterns, using an explicit allow-marker. Verify that it flags a fixture line and passes on the repository. <!-- hygiene: allow -->
 
 ## 3. Prompt grammar and key schema
 

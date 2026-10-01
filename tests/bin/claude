@@ -1,0 +1,73 @@
+#!/usr/bin/env zsh
+# zco-test-double: stands in for the Claude Code CLI during tests and never contacts any service.
+#
+# Records each call under $FAKE_CLAUDE_LOG:
+#   count               number of calls so far
+#   argv, argv.N        the arguments, each one NUL-terminated
+#   stdin, stdin.N      the bytes read from stdin (only for a pipe or a regular file)
+#   stdin_kind(.N)      tty, pipe, file, chardev or other
+#   env, env.N          NAME=value entries, NUL-terminated, for the variables listed below
+# Replies:
+#   stream-json requested  -> replays the file $FAKE_CLAUDE_STREAM, or a minimal stream
+#   otherwise              -> prints $FAKE_CLAUDE_ANSWER (default: "fake answer")
+#   $FAKE_CLAUDE_STDERR    -> printed on stderr when set
+#   exit status            -> $FAKE_CLAUDE_EXIT (default 0)
+# Variables recorded: CLAUDE_CONFIG_DIR, ANTHROPIC_DEFAULT_OPUS_MODEL and those named in
+# $FAKE_CLAUDE_ENV (space separated).
+
+emulate zsh
+log=${FAKE_CLAUDE_LOG:?FAKE_CLAUDE_LOG must point to a directory}
+mkdir -p -- $log
+
+integer n=0
+[[ -f $log/count ]] && n=$(<$log/count)
+n+=1
+print -r -- $n > $log/count
+
+: > $log/argv.$n
+for arg in "$@"; do
+  print -rn -- "$arg"$'\0' >> $log/argv.$n
+done
+
+if [[ -t 0 ]]; then kind=tty
+elif [[ -p /dev/stdin ]]; then kind=pipe
+elif [[ -f /dev/stdin ]]; then kind=file
+elif [[ -c /dev/stdin ]]; then kind=chardev
+else kind=other
+fi
+print -r -- $kind > $log/stdin_kind.$n
+if [[ $kind == (pipe|file) ]]; then
+  cat > $log/stdin.$n
+else
+  : > $log/stdin.$n
+fi
+
+: > $log/env.$n
+for name in CLAUDE_CONFIG_DIR ANTHROPIC_DEFAULT_OPUS_MODEL ${=FAKE_CLAUDE_ENV:-}; do
+  (( ${+parameters[$name]} )) && print -rn -- "$name=${(P)name}"$'\0' >> $log/env.$n
+done
+
+for f in argv stdin stdin_kind env; do
+  cp -- $log/$f.$n $log/$f
+done
+
+[[ -n ${FAKE_CLAUDE_STDERR:-} ]] && print -ru2 -- "$FAKE_CLAUDE_STDERR"
+
+answer=${FAKE_CLAUDE_ANSWER-fake answer}
+if [[ ${argv[(I)--output-format]} -gt 0 && ${argv[${argv[(I)--output-format]}+1]} == stream-json ]]; then
+  if [[ -n ${FAKE_CLAUDE_STREAM:-} ]]; then
+    cat -- $FAKE_CLAUDE_STREAM
+  else
+    # Minimal stream: the final answer as a successful result event.
+    escaped=${answer//\\/\\\\}
+    escaped=${escaped//\"/\\\"}
+    escaped=${escaped//$'\n'/\\n}
+    escaped=${escaped//$'\t'/\\t}
+    print -r -- '{"type":"system","subtype":"init"}'
+    print -r -- '{"type":"result","subtype":"success","is_error":false,"duration_ms":1200,"num_turns":1,"total_cost_usd":0.001,"result":"'$escaped'"}'
+  fi
+else
+  print -r -- "$answer"
+fi
+
+exit ${FAKE_CLAUDE_EXIT:-0}
