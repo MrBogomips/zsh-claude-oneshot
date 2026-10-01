@@ -1,0 +1,122 @@
+# _zco_keys: the single schema of configuration keys and command-line options.
+#
+# Fills the caller's associative array `zk` (declare it first: `local -A zk; _zco_keys`).
+# Configuration keys, listed in zk[keys] in schema order:
+#   zk[type:KEY]     words prefix rawline arg path mode level bool decimal posint name text rule settings
+#   zk[list:KEY]     1 for list keys
+#   zk[user:KEY]     1 when only the user file may set the key
+#   zk[path:KEY]     1 when relative values in a file resolve against the file's directory
+#   zk[load:KEY]     1 for keys read once when the plugin loads
+#   zk[env:KEY]      environment variable (scalar keys only)
+#   zk[cli:KEY]      command-line options that set the key (space separated)
+#   zk[default:KEY]  built-in default
+#   zk[desc:KEY]     one-line description
+# Command-line options, listed by long name in zk[opts]:
+#   zk[short:LONG]   short form, zk[long:SHORT] the reverse
+#   zk[arg:LONG]     value placeholder (empty for options without a value)
+#   zk[dest:LONG]    where the parser stores the value (a key name or a run-time setting)
+#   zk[set:LONG]     value stored by an option without a value
+#   zk[comp:LONG]    value completion: level mode file dir (empty: none)
+#   zk[odesc:LONG]   one-line description
+# Plus zk[bundle] (letters that may be bundled), zk[levels] and zk[modes].
+
+emulate -L zsh
+
+local -a keyrows optrows f
+local row key flags
+
+# key | type | flags (l list, u user file only, p path, L load time) | env | cli | default | description
+keyrows=(
+  'models|words|uL|ZCO_MODELS||fable opus sonnet haiku|model names separated by whitespace, one command each'
+  'prefix|prefix|uL|ZCO_PREFIX|||prefix for the command names, e.g. c- for c-opus'
+  'raw_line|rawline|uL|ZCO_RAW_LINE|--literal --shell|literal|interactive line mode: literal, shell or off'
+  'claude_cmd|words|u|ZCO_CLAUDE_CMD||claude|Claude Code command words; quotes are honoured, nothing is expanded'
+  'extra_args|arg|lu||||one more Claude Code argument per line'
+  'mcp_config|path|lup||--mcp-config||MCP configuration file, one per line'
+  'permission_mode|mode||ZCO_PERMISSION_MODE|--permission-mode -n|auto|permission mode (bypassPermissions only in the user file)'
+  'effort|level||ZCO_EFFORT|-e --effort||effort level: low, medium, high, xhigh or max'
+  'mcp|bool||ZCO_MCP|-m --mcp|false|include the MCP servers Claude Code is configured with'
+  'session_persistence|bool||ZCO_SESSION_PERSISTENCE||true|save sessions, so -c and -r can pick them up'
+  'max_budget_usd|decimal||ZCO_MAX_BUDGET_USD|--max-budget-usd||stop when the cost exceeds this many dollars'
+  'max_turns|posint||ZCO_MAX_TURNS|--max-turns||stop after this many agentic turns'
+  'agent|name||ZCO_AGENT|-a --agent||Claude Code agent to run as'
+  'system_prompt|text||ZCO_SYSTEM_PROMPT|--system-prompt||text that replaces the system prompt'
+  'system_prompt_file|path|p|ZCO_SYSTEM_PROMPT_FILE|--system-prompt-file||file that replaces the system prompt'
+  'append_system_prompt|text||ZCO_APPEND_SYSTEM_PROMPT|--append-system-prompt||text appended to the system prompt'
+  'append_system_prompt_file|path|p|ZCO_APPEND_SYSTEM_PROMPT_FILE|--append-system-prompt-file||file appended to the system prompt'
+  'add_dir|path|lp||--add-dir||another directory Claude Code may use, one per line'
+  'allowed_tools|rule|l||--allowed-tools||tool rule to allow, one per line'
+  'disallowed_tools|rule|l||--disallowed-tools||tool rule to deny, one per line'
+  'settings|settings|up|ZCO_SETTINGS|--settings||settings file or JSON'
+  'fallback_model|name||ZCO_FALLBACK_MODEL|--fallback-model||model to use when the main one is overloaded'
+)
+
+# short | long | value | destination | value set by a flag | completion | description
+optrows=(
+  '-n|--dry-run||dry_run|1||dry run: plan permission mode, nothing is changed'
+  '-c|--continue||continue|1||continue the most recent session in this directory'
+  '-m|--mcp||mcp|1||include MCP servers'
+  '-v|--verbose||output|verbose||more progress output'
+  '-q|--quiet||output|quiet||no header, progress or notices'
+  '-h|--help||help|1||print this help'
+  '|--show-config||show_config|1||print the effective configuration and exit'
+  '|--shell||line_mode|shell||typed line: the prompt ends at a spaced shell operator'
+  '|--literal||line_mode|literal||typed line: the whole rest of the line is the prompt'
+  '-e|--effort|LEVEL|effort||level|effort level: low medium high xhigh max'
+  '-a|--agent|NAME|agent|||run as this Claude Code agent'
+  '-s|--skill|NAME|skill|||start the prompt with /NAME (a skill or slash command)'
+  '-r|--resume|ID|resume|||resume the session with this id'
+  '|--permission-mode|MODE|permission_mode||mode|permission mode (default auto)'
+  '|--system-prompt|TEXT|system_prompt|||replace the system prompt'
+  '|--system-prompt-file|PATH|system_prompt_file||file|replace the system prompt with a file'
+  '|--append-system-prompt|TEXT|append_system_prompt|||append text to the system prompt'
+  '|--append-system-prompt-file|PATH|append_system_prompt_file||file|append a file to the system prompt'
+  '|--add-dir|DIR|add_dir||dir|let Claude Code use another directory (repeatable)'
+  '|--allowed-tools|RULE|allowed_tools|||allow a tool rule (repeatable)'
+  '|--disallowed-tools|RULE|disallowed_tools|||deny a tool rule (repeatable)'
+  '|--settings|VALUE|settings||file|settings file or JSON'
+  '|--mcp-config|PATH|mcp_config||file|load MCP servers from this file (repeatable)'
+  '|--fallback-model|MODEL|fallback_model|||model to use when the main one is overloaded'
+  '|--max-turns|N|max_turns|||stop after N agentic turns'
+  '|--max-budget-usd|AMOUNT|max_budget_usd|||stop when the cost exceeds AMOUNT dollars'
+)
+
+zk=()
+local -a order
+for row in $keyrows; do
+  f=( "${(@s:|:)row}" )
+  key=$f[1] flags=$f[3]
+  order+=( $key )
+  zk[type:$key]=$f[2]
+  [[ $flags == *l* ]] && zk[list:$key]=1
+  [[ $flags == *u* ]] && zk[user:$key]=1
+  [[ $flags == *p* ]] && zk[path:$key]=1
+  [[ $flags == *L* ]] && zk[load:$key]=1
+  zk[env:$key]=$f[4]
+  zk[cli:$key]=$f[5]
+  zk[default:$key]=$f[6]
+  zk[desc:$key]=$f[7]
+done
+zk[keys]=${(j: :)order}
+
+order=()
+local bundle=
+for row in $optrows; do
+  f=( "${(@s:|:)row}" )
+  key=$f[2]
+  order+=( $key )
+  if [[ -n $f[1] ]]; then
+    zk[short:$key]=$f[1]
+    zk[long:$f[1]]=$key
+    [[ -z $f[3] ]] && bundle+=${f[1]#-}
+  fi
+  zk[arg:$key]=$f[3]
+  zk[dest:$key]=$f[4]
+  zk[set:$key]=$f[5]
+  zk[comp:$key]=$f[6]
+  zk[odesc:$key]=$f[7]
+done
+zk[opts]=${(j: :)order}
+zk[bundle]=$bundle
+zk[levels]='low medium high xhigh max'
+zk[modes]='acceptEdits auto bypassPermissions manual dontAsk plan'

@@ -1,0 +1,97 @@
+# _zco_parse ARG...: split the words after the model into effort, options and the prompt.
+#
+# Writes into the caller's associative array P (declare it first):
+#   P[<key>]       value of a value option, under the key named by zk[dest:...] (effort, agent,
+#                  skill, resume, permission_mode, system_prompt, max_turns, ...)
+#   P[<list key>]  add_dir, allowed_tools, disallowed_tools, mcp_config: NUL-terminated entries
+#   P[dry_run] P[continue] P[mcp] P[help] P[show_config]   1 when given
+#   P[output]      verbose or quiet (the last of -v / -q wins)
+#   P[line_mode]   shell or literal (the last of --shell / --literal wins)
+#   P[prompt]      the prompt words joined with single spaces; P[has_prompt] is 1 when not empty
+# Returns 1 with the message in REPLY on a usage error. Pure: no I/O.
+
+emulate -L zsh
+setopt extended_glob
+[[ -n ${zk[keys]:-} ]] || { local -A zk; _zco_keys }
+
+local tok long letter
+integer i=1 n=$# effort_set=0 ended=0
+local -a words
+
+while (( i <= n )); do
+  tok=${argv[i]}
+  _zco_classify "$tok" $effort_set
+  case $REPLY in
+    (end)
+      ended=1
+      (( i++ ))
+      break ;;
+    (effort)
+      P[effort]=$tok
+      effort_set=1 ;;
+    (flag)
+      if [[ $tok == --* ]]; then
+        P[${zk[dest:$tok]}]=${zk[set:$tok]}
+      else
+        for letter in ${(s::)tok#-}; do
+          long=${zk[long:-$letter]}
+          P[${zk[dest:$long]}]=${zk[set:$long]}
+        done
+      fi ;;
+    (value-opt|value-eq)
+      if [[ $REPLY == value-eq ]]; then
+        long=${tok%%=*}
+        tok=${tok#*=}
+      else
+        long=${zk[long:$tok]:-$tok}
+        if (( i == n )); then
+          if [[ $long == --effort ]]; then
+            REPLY="$long needs a level: ${zk[levels]}"
+          else
+            REPLY="$long needs a value"
+          fi
+          return 1
+        fi
+        (( i++ ))
+        tok=${argv[i]}
+      fi
+      if [[ $long == --effort ]]; then
+        if [[ $tok == ultracode ]]; then
+          REPLY="ultracode is not supported for one-shot runs; to send it as prompt text, put -- before the prompt"
+          return 1
+        elif [[ -z ${(M)${(s: :)zk[levels]}:#$tok} ]]; then
+          REPLY="unknown effort level '$tok'; valid levels: ${zk[levels]}"
+          return 1
+        fi
+        effort_set=1
+      elif [[ -z $tok ]]; then
+        REPLY="$long needs a value"
+        return 1
+      fi
+      if [[ -n ${zk[list:${zk[dest:$long]}]:-} ]]; then
+        P[${zk[dest:$long]}]+=$tok$'\0'
+      else
+        P[${zk[dest:$long]}]=$tok
+      fi ;;
+    (unknown)
+      REPLY="unknown option '$tok' (to start the prompt with a dash, put -- before it)"
+      return 1 ;;
+    (*)
+      break ;;
+  esac
+  (( i++ ))
+done
+
+words=( "${(@)argv[i,n]}" )
+P[prompt]=${(j: :)words}
+[[ -n ${P[prompt]} ]] && P[has_prompt]=1
+
+if (( ! ended )) && [[ ${${P[prompt]##[[:space:]]#}%%[[:space:]]*} == ultracode ]]; then
+  REPLY="ultracode is not supported for one-shot runs; to send it as prompt text, put -- before the prompt"
+  return 1
+fi
+if [[ -n ${P[continue]:-} && -n ${P[resume]:-} ]]; then
+  REPLY="-c (--continue) and -r (--resume) cannot be used together"
+  return 1
+fi
+return 0

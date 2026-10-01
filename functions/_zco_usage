@@ -1,0 +1,79 @@
+# _zco_usage NAME [MODEL]: print the help for command NAME on stdout.
+# _zco_usage -s NAME: print the one-line usage summary only.
+
+emulate -L zsh
+
+local short=0
+[[ $1 == -s ]] && { short=1; shift }
+local name=$1 model=${2:-}
+local grammar="[effort] [options] [--] prompt..."
+local synopsis="$name $grammar" helpcmd="$name -h"
+if [[ $name == zco ]]; then
+  synopsis="zco <model> $grammar"
+  helpcmd="zco <model> -h"
+fi
+
+if (( short )); then
+  print -r -- "usage: $synopsis   ($helpcmd for help)"
+  return 0
+fi
+
+local -A zk
+_zco_keys
+local o left k line
+local -a envs lefts
+integer width=0
+for o in ${(s: :)zk[opts]}; do
+  if [[ -n ${zk[short:$o]:-} ]]; then left="${zk[short:$o]}, $o"; else left="    $o"; fi
+  [[ -n ${zk[arg:$o]} ]] && left+=" ${zk[arg:$o]}"
+  lefts+=( "$left" )
+  (( $#left > width )) && width=$#left
+done
+width+=2
+
+print -r -- "usage: $synopsis"
+[[ $name != zco ]] && print -r -- "       zco <model> $grammar"
+print
+if [[ -n $model ]]; then
+  print -r -- "Runs a one-shot Claude Code prompt (claude -p) with model $model in the current directory."
+else
+  print -r -- "Runs a one-shot Claude Code prompt (claude -p) with the given model in the current directory."
+fi
+print -r -- "Type the prompt without quotes after the options. The final answer goes to stdout; the"
+print -r -- "header, progress and notices go to stderr."
+print
+print -r -- "Effort words (before the prompt): ${zk[levels]}"
+print
+print -r -- "Options:"
+integer i=0
+for o in ${(s: :)zk[opts]}; do
+  (( i++ ))
+  left=$lefts[i]
+  print -r -- "  ${(r:width:)left}${zk[odesc:$o]}"
+done
+left=--
+print -r -- "  ${(r:width:)left}end of options: everything after it is the prompt"
+print
+print -r -- "Configuration files (INI-style \`key = value\` lines, \`[model]\` sections):"
+print -r -- "  user file      \$ZCO_CONFIG, or ~/.zco.config"
+print -r -- "  project file   the nearest .zco.config in this directory or a parent"
+print -r -- "                 (set ZCO_LOCAL_CONFIG=0 to ignore project files)"
+print -r -- "  precedence     built-in < user file < project file < environment < command line"
+print -r -- "  $name --show-config prints each effective value and where it comes from."
+print
+for k in ${(s: :)zk[keys]}; do
+  [[ -n ${zk[env:$k]} ]] && envs+=( ${zk[env:$k]} )
+  [[ $k == effort ]] && envs+=( 'ZCO_EFFORT_<MODEL>' )
+done
+envs+=( ZCO_CONFIG ZCO_LOCAL_CONFIG )
+print -r -- "Environment variables:"
+line=
+for k in $envs; do
+  if (( $#line + $#k + 1 > 76 )); then
+    print -r -- "  $line"
+    line=
+  fi
+  line+=${line:+ }$k
+done
+[[ -n $line ]] && print -r -- "  $line"
+return 0

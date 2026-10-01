@@ -1,0 +1,42 @@
+# _zco_classify TOKEN [EFFORT_SET]: the grammar class of one word, in REPLY.
+#
+#   end        --
+#   effort     low medium high xhigh max, only while no effort is set (EFFORT_SET is 0)
+#   value-opt  an option that takes the next word as its value
+#   value-eq   --long-option=VALUE
+#   flag       an option without a value, or a bundle of them (-nc)
+#   ultracode  ultracode
+#   unknown    any other word starting with - (but not a bare -)
+#   prompt     everything else
+#
+# Shared by the parser, the line rewrite and completion. Uses zk from _zco_keys when the caller
+# has it in scope.
+
+emulate -L zsh
+setopt extended_glob
+[[ -n ${zk[keys]:-} ]] || { local -A zk; _zco_keys }
+
+local tok=$1 long
+case $tok in
+  (--)
+    REPLY=end ;;
+  (low|medium|high|xhigh|max)
+    if (( ${2:-0} )); then REPLY=prompt; else REPLY=effort; fi ;;
+  (ultracode)
+    REPLY=ultracode ;;
+  (--?*=*)
+    long=${tok%%=*}
+    if [[ -n ${zk[arg:$long]:-} ]]; then REPLY=value-eq; else REPLY=unknown; fi ;;
+  (-?*)
+    if [[ $tok == --* ]]; then long=$tok; else long=${zk[long:$tok]:-}; fi
+    if [[ -n $long && -n ${zk[dest:$long]:-} ]]; then
+      if [[ -n ${zk[arg:$long]} ]]; then REPLY=value-opt; else REPLY=flag; fi
+    elif [[ $tok == -[${zk[bundle]}](#c2,) ]]; then
+      REPLY=flag
+    else
+      REPLY=unknown
+    fi ;;
+  (*)
+    REPLY=prompt ;;
+esac
+return 0

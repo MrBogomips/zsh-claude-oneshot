@@ -179,6 +179,27 @@ zt_user_config() { zt_write $HOME/.zco.config "$1" }
 
 zt_load() { source $ZT_PLUGIN }
 
+# Autoload the plugin's functions without loading the plugin (for unit tests).
+zt_functions() {
+  local -a fns
+  fpath=( $ZT_ROOT/functions $fpath )
+  fns=( $ZT_ROOT/functions/[^.]*(N.:t) )
+  (( $#fns )) && autoload -Uz $fns
+}
+
+# Parse arguments with _zco_parse: results in the global assoc P, status in ZT_RC, message in REPLY.
+zt_parse() {
+  typeset -gA P
+  P=()
+  local -A zk
+  _zco_keys
+  _zco_parse "$@"
+  ZT_RC=$?
+}
+
+# Elements of a parsed or configured list value (NUL-terminated entries), in $reply.
+zt_list() { reply=( ${(0)1} ) }
+
 zt_mkdir_cd() { mkdir -p -- $1 && cd -- $1 }
 
 # ---------------------------------------------------------------- per-test environment

@@ -1,0 +1,8 @@
+# _zco_err NAME MESSAGE...: report a usage error on stderr and return 2.
+
+emulate -L zsh
+local name=$1
+shift
+print -ru2 -- "$name: $*"
+_zco_usage -s $name >&2
+return 2

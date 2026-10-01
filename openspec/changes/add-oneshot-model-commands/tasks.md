@@ -24,7 +24,7 @@
 
 ## 3. Prompt grammar and key schema
 
-- [ ] 3.1 Write unit tests for `_zco_keys`, `_zco_classify` and `_zco_parse`, tagged `# @scenario prompt-grammar: …`. Cover every prompt-grammar scenario that does not depend on stdin, including "Option values" and "Line-mode options at run time". Add these edge tokens:
+- [x] 3.1 Write unit tests for `_zco_keys`, `_zco_classify` and `_zco_parse`, tagged `# @scenario prompt-grammar: …`. Cover every prompt-grammar scenario that does not depend on stdin, including "Option values" and "Line-mode options at run time". Add these edge tokens:
   - bare `-`;
   - empty `--effort=` and `--agent=`;
   - a value option as the last token;
@@ -32,17 +32,17 @@
   - repeated list options.
 
   Verify that they fail.
-- [ ] 3.2 Implement `_zco_keys`, the single schema for every key: type, command-line option, environment name, list or scalar, and whether it is user-file only. Verify with a unit test that it matches the key table in the configuration spec row by row.
-- [ ] 3.3 Implement `_zco_classify` with the token classes from design Decision 3, reading the value-option names from `_zco_keys`. Verify that its unit tests pass.
-- [ ] 3.4 Implement `_zco_parse`:
+- [x] 3.2 Implement `_zco_keys`, the single schema for every key: type, command-line option, environment name, list or scalar, and whether it is user-file only. Verify with a unit test that it matches the key table in the configuration spec row by row.
+- [x] 3.3 Implement `_zco_classify` with the token classes from design Decision 3, reading the value-option names from `_zco_keys`. Verify that its unit tests pass.
+- [x] 3.4 Implement `_zco_parse`:
   - the effort-once rule and the `-e`/`--effort`/`--effort=` forms;
   - value options in both `--opt VALUE` and `--opt=VALUE` form, with list options accumulating;
   - `--`, bundles, and last-wins for `-v`/`-q`;
   - the ultracode rule, unknown options and missing values.
 
   Verify that the parser tests pass.
-- [ ] 3.5 Implement `_zco_usage` and `_zco_err`. Usage errors go to stderr, are prefixed with the command name and exit with status 2; help goes to stdout, lists every option from `_zco_keys` and exits with status 0. Verify that the "Help" and "Usage errors" scenarios pass.
-- [ ] 3.6 Write the README skeleton:
+- [x] 3.5 Implement `_zco_usage` and `_zco_err`. Usage errors go to stderr, are prefixed with the command name and exit with status 2; help goes to stdout, lists every option from `_zco_keys` and exits with status 0. Verify that the "Help" and "Usage errors" scenarios pass.
+- [x] 3.6 Write the README skeleton:
   - intro and quick examples;
   - grammar, the options table generated from the same list as `_zco_keys`, and effort words;
   - `--` and the ultracode note;
