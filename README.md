@@ -661,7 +661,8 @@ and only with spaces around them (or at the end of the line). Operators attached
 like `README.md;`, `<div>` or `a>b`, stay prompt text. A phrase in quotes, starting at a word that
 begins with `'` or `"` and ending at the next word that ends with the same quote, is skipped,
 so `'a | b'` stays in the prompt, quotes included. An apostrophe inside a word, as in `don't`,
-does not start a phrase. The line you see after Enter shows exactly where the prompt ended.
+does not start a phrase. And when zsh itself can read the line, an operator that zsh would read
+as quoted text never splits it. The line you see after Enter shows exactly where the prompt ended.
 
 ### Choosing the mode
 

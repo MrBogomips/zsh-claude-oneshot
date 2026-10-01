@@ -10,7 +10,8 @@
 #     and -- are consumed with the parser's own classifier; the first other word, or a shell
 #     operator, is where the prompt starts.
 #  3. literal: the prompt part is the rest of the line. shell: it ends at the first spaced shell
-#     operator outside a quoted phrase, and the operator and what follows stay for zsh.
+#     operator outside a quoted phrase, and the operator and what follows stay for zsh. When
+#     zsh can read the whole prompt part, an operator zsh would read as quoted text is skipped.
 #  4. The prompt part is quoted with ${(qq)...}, unless it is empty, holds only safe characters,
 #     or is already exactly one quoted word (which also makes the rewrite idempotent).
 
@@ -89,8 +90,14 @@ REPLY=$line
 [[ $mode == off ]] && return 1
 
 local prefix=$lead$first${rest[1,start-1]} prompt=${rest[start,-1]} tail= word q=
+local -a tt ta
 if [[ $mode == shell ]]; then
-  integer j=1 m=${#prompt} ws
+  # When zsh can read the whole prompt part (no quote left open), an operator only ends the
+  # prompt if zsh would see it too, that is, if the text before it leaves no quote open. Text
+  # leaves a quote open when a word appended to it does not become a word of its own.
+  integer j=1 m=${#prompt} ws balanced=0
+  tt=( ${(z)prompt} ) ta=( ${(z)${:-$prompt x}} )
+  (( $#ta > $#tt )) && balanced=1
   while (( j <= m )); do
     while (( j <= m )) && [[ ${prompt[j]} == [[:space:]] ]]; do (( j++ )); done
     (( j > m )) && break
@@ -108,6 +115,10 @@ if [[ $mode == shell ]]; then
     fi
     if [[ $word == ('|'|'|&'|'||'|'&&'|';'|'&'|'>'|'>>'|'>|'|'&>'|'&>>'|'2>'|'2>>'|'2>&1'|'<') ]] &&
        { (( ws > 1 )) || [[ $prefix == *[[:space:]] ]] }; then
+      if (( balanced )); then
+        tt=( ${(z)${prompt[1,ws-1]}} ) ta=( ${(z)${:-${prompt[1,ws-1]} x}} )
+        (( $#ta > $#tt )) || continue   # quoted text for zsh, not an operator
+      fi
       tail=${prompt[ws,-1]}
       prompt=${prompt[1,ws-1]}
       break

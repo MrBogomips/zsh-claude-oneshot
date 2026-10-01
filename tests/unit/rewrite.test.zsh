@@ -269,3 +269,16 @@ test_glued_quotes_with_expansions_are_prompt_text() {
   assert_rewrite literal "opus \$'a'\$(id)\$'b'" "opus '\$'\\''a'\\''\$(id)\$'\\''b'\\'''"
   assert_rewrite literal 'opus "say \"hi\" now"' 'opus "say \"hi\" now"'
 }
+
+# @scenario raw-line-capture: Operator quoted for zsh
+test_operator_quoted_for_zsh_is_not_a_split() {
+  assert_rewrite literal "opus --shell x'y | touch out \\'" "opus --shell 'x'\\''y | touch out \\'\\'''"
+  assert_rewrite shell "opus x'y | z' | wc" "opus 'x'\\''y | z'\\''' | wc"
+  assert_rewrite shell 'opus $(echo | x) more' "opus '\$(echo | x) more'"
+  assert_rewrite shell "opus don't | pbcopy" "opus 'don'\\''t' | pbcopy"
+}
+
+test_open_quote_after_several_words_still_splits_at_spaced_operators() {
+  assert_rewrite shell "opus write it, don't list tests | pbcopy" "opus 'write it, don'\\''t list tests' | pbcopy"
+  assert_rewrite shell "opus a b 'c | d" "opus 'a b '\\''c | d'"
+}

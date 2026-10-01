@@ -356,3 +356,12 @@ test_rerunning_a_shell_mode_line_typed() {
   assert_eq "$(<$ZT_TMP/clipboard)" again
   assert_eq "$(zt_claude_calls)" 2
 }
+
+# @scenario raw-line-capture: Operator quoted for zsh
+test_operator_quoted_for_zsh_typed() {
+  zt_rl_start
+  zt_pty_run "opus --shell x'y | touch out \\'"
+  zt_pty_stop
+  assert_prompt "x'y | touch out \\'"
+  assert_file_absent out "the quoted | must not become a pipe"
+}

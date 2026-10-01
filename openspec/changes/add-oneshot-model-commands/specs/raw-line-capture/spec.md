@@ -1,5 +1,7 @@
 # Spec Delta
 
+<!-- Revision 1.3.0 (2026-10-01): shell mode does not split at an operator that zsh itself reads as quoted text (from the security review). -->
+
 ## Purpose
 
 Lets users type prompts unquoted on the interactive command line. The prompt part of a line that starts with a model command is quoted before zsh parses it, so apostrophes and shell metacharacters stay part of the prompt. A per-line flag lets the shell take over after the prompt, for pipes and redirections.
@@ -125,6 +127,7 @@ In shell mode, the prompt SHALL end at the first word that meets all of these co
 - It is outside a phrase the user quoted.
 - It is exactly one of `|` `|&` `||` `&&` `;` `&` `>` `>>` `>|` `&>` `&>>` `2>` `2>>` `2>&1` `<`.
 - It is preceded by whitespace and followed by whitespace or the end of the line.
+- When zsh can read the whole prompt part without a quote left open, zsh also reads the word as an operator, not as quoted text.
 
 A quoted phrase starts at a word beginning with `'` or `"` and ends at the next word ending with the same character. The text before the end of the prompt is the prompt part, and it is treated as in literal mode: quoted when needed, and left alone when it is already one quoted word. The operator and everything after it SHALL be left unchanged for zsh. Operators attached to other text SHALL stay prompt text. A line without such an operator SHALL be handled as in literal mode.
 
@@ -147,6 +150,10 @@ A quoted phrase starts at a word beginning with `'` or `"` and ends at the next 
 #### Scenario: Operator inside a quoted phrase
 - **WHEN** the user types `opus --shell count lines matching 'a | b' | wc -l` and presses Enter
 - **THEN** Claude Code receives the prompt `count lines matching 'a | b'`, quote characters included, and `wc -l` receives the answer
+
+#### Scenario: Operator quoted for zsh
+- **WHEN** the user types `opus --shell x'y | touch out \'` and presses Enter
+- **THEN** the line is handled as in literal mode: Claude Code receives the prompt `x'y | touch out \'` and no file named `out` is created
 
 #### Scenario: No operator on the line
 - **WHEN** the user types `opus --shell don't touch tests` and presses Enter

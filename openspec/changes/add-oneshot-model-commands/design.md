@@ -2,6 +2,7 @@
 
 <!-- Revision 1.1.0 (2026-09-30): adds Decisions 4 (configuration files) and 5 (curated Claude Code options); later decisions renumbered. -->
 <!-- Revision 1.2.0 (2026-10-01): Decision 11 gains line modes (literal / shell / off) and the --shell / --literal flags; open decisions resolved (MIT, jq). -->
+<!-- Revision 1.3.0 (2026-10-01): Decision 11's shell-mode scan skips operators that zsh reads as quoted text; implementation notes and smoke-test results recorded during apply. -->
 
 ## Context
 
@@ -253,6 +254,7 @@ Otherwise it passes the line and the default mode to `_zco_rewrite` and sets `BU
 4. The rest from the prompt start is R. In `literal` mode the prompt part P is all of R, and the tail T is empty. In `shell` mode, scan R as raw whitespace-separated words, without quote processing; prose apostrophes such as `don't` must not confuse the scan:
    - A word starting with `'` or `"` opens a quoted phrase, which closes at the next word ending with the same character. Words inside a phrase are skipped.
    - The first other word that is exactly one of `|` `|&` `||` `&&` `;` `&` `>` `>>` `>|` `&>` `&>>` `2>` `2>>` `2>&1` `<` splits R. P is the text before it, and T is that word plus everything after it, verbatim.
+   - When zsh can read all of R (no quote left open), a split word only counts if the text before it leaves no quote open either, so zsh would also see the operator. Otherwise the scan goes on. Without this rule, `opus --shell x'y | touch out \'` would pipe into `touch`, although zsh reads that `|` as quoted text. Prose apostrophes leave R open, so they still split as described above.
    - With no such word, P is R and T is empty.
 5. Trim P. Nothing changes when any of these holds:
    - P is empty;
